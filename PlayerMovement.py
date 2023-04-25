@@ -1,4 +1,5 @@
 from cmu_graphics import * 
+import Keybinds
 
 app.stepsPerSecond = 120
 
@@ -17,7 +18,7 @@ class Player(object):
 
     def movement(self, key): 
         controls = {
-            'w' : [0, -self.dy], 
+            Keybinds.movement['up'] : [0, -self.dy], 
             's' : [0, self.dy], 
             'a' : [-self.dx, 0], 
             'd' : [self.dx, 0], 
