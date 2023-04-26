@@ -42,9 +42,9 @@ class Player(object):
     
     def draw(self, cx, cy, xpLevel, sight): 
         self.sight = Arc(cx, cy, sight*15 + 50, sight*15 + 50, -45, 90, fill = 'gainsboro', opacity = 75)
-        self.model = Circle(cx, cy, 7, fill = 'white', border = 'black')
+        self.body = Circle(cx, cy, 7, fill = 'white', border = 'black')
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
-        self.drawing = Group(self.model, self.sight, self.hitbox)
+        self.drawing = Group(self.body, self.sight, self.hitbox)
     
     def movement(self, key): 
         controls = {
