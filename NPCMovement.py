@@ -6,7 +6,7 @@ class NPC(object):
     def __init__(self, cx, cy, rotationAngle, xpLevel, sightDistance, colour):
         self.dx = 0
         self.dy = 0
-        self.dr = 1.5
+        self.dr = 0.5
         self.speed = 0.5 # Could change based on xpLevel
         self.followPlayer = True
 
@@ -101,7 +101,7 @@ class NPC(object):
         self.drawing.centerY += self.dy * self.speed
 
     def draw(self, cx, cy, rotationAngle, sightDistance, colour):
-        self.sight = Arc(cx, cy, sightDistance*10 + 50, sightDistance*10 + 50, -45, 90, fill = 'lightGrey', opacity = 50)
+        self.sight = Arc(cx, cy, sightDistance*10 + 50, sightDistance*10 + 50, -45, 90, fill = 'lightGrey', opacity = 50, rotateAngle = rotationAngle)
         self.body = Circle(cx, cy, 7, fill = colour, border = 'black')
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
         self.drawing = Group(self.body, self.sight, self.hitbox)
