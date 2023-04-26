@@ -52,6 +52,6 @@ def onMouseMove(x, y):
 def onStep():
     for enemy in allNPCs:
         enemy.handleOnStep(player, allNPCs)
-    
+
 
 cmu_graphics.run()

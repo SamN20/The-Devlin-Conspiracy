@@ -6,7 +6,7 @@ class NPC(object):
     def __init__(self, cx, cy, rotationAngle, xpLevel, sightDistance, colour):
         self.dx = 0
         self.dy = 0
-        self.dr = 0.5
+        self.dr = 1
         self.speed = 0.5 # Could change based on xpLevel
         self.followPlayer = True
 
@@ -42,7 +42,7 @@ class NPC(object):
                 dy /= length
             self.dx = dx
             self.dy = dy
-            # self.move()
+            self.move()
             
         # Update the rotation angle based on the rotation direction
         self.sight.rotateAngle = (self.sight.rotateAngle + direction * self.dr) % 360
@@ -63,7 +63,7 @@ class NPC(object):
                 self.dy = 0
             
             # Move the NPC
-            self.move()
+            # self.move()
             self.move_away_from_npcs(allNPCs, player)
 
     def move_away_from_npcs(self, allNPCs, player):
@@ -108,6 +108,6 @@ class NPC(object):
 
 # NPC(200, 300, 0, 5, 5, 'red')
 
-# cmu_graphics.run()+
+# cmu_graphics.run()
 
 
