@@ -40,6 +40,7 @@ class Player(object):
         self.draw(cx, cy, level)
         self.dx = 0.5
         self.dy = 0.5
+        self.dashDistance = 50
         self.actions = ['dash', 'swing', 'shoot']
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
@@ -63,11 +64,17 @@ class Player(object):
         if key in controls : 
             self.drawing.centerX += controls[key][0]
             self.drawing.centerY += controls[key][1]
+
+    def dash(self):
+        dashToX, dashToY = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, self.sight.rotateAngle, self.dashDistance)
+        Circle(dashToX, dashToY, 5, fill='blue')
+
     def lookRotation(self, x, y): 
         angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, x, y)
         if self.attacking == False : 
             self.sight.rotateAngle = angle
             self.swing.rotateAngle = angle
+    
     def collision(self): 
         if game.room.walls.hits(self.hitbox.right, self.hitbox.centerY) or self.hitbox.right > 400:      
             self.drawing.centerX -= self.dx
@@ -77,6 +84,7 @@ class Player(object):
             self.drawing.centerY += self.dy
         if game.room.walls.hits(self.hitbox.centerX, self.hitbox.bottom) or self.hitbox.bottom > 400:   
             self.drawing.centerY -= self.dy
+    
     def attackSwing(self): 
         if self.attacking == True: 
             self.swing.opacity = 100
@@ -88,6 +96,7 @@ class Player(object):
                 self.swing.rotateAngle = self.sight.rotateAngle
         else: 
             self.swing.opacity = 0
+    
     def shootPhysics(self): 
         if self.canShoot == True: 
             self.projectiles = Group()
@@ -107,9 +116,11 @@ class Player(object):
     def handleOnKeys(self, keys): 
         for key in keys: 
             self.movement(key)
+    
     def handleKeyPress(self, key): 
         self.handleActionIndex(key)
         print(self.currentActionIndex, self.currentAction)
+    
     def handleOnStep(self): 
         self.lookRotation(game.room.cursorX, game.room.cursorY)
         self.collision()
@@ -124,6 +135,8 @@ class Player(object):
                 self.attacking = True 
             if self.currentAction == 'shoot' : 
                 self.shooting = False
+            if self.currentAction == 'dash':
+                self.dash()
 
 class Projectile(object): # making Projectiles a Class so the player can shoot multiple bullets and make enemies that shoot
     def __init__(self, cx, cy, angle, colour, type):
