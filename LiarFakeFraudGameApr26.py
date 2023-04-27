@@ -36,28 +36,29 @@ class RoomState(object):
         self.cursor.centerY = self.cursorY
 
 class Player(object): 
-    def __init__(self, cx, cy, xpLevel, sight): 
-        self.draw(cx, cy, xpLevel, sight)
+    def __init__(self, cx, cy, level): 
+        self.draw(cx, cy, level)
         self.dx = 0.5
         self.dy = 0.5
         self.actions = ['dash', 'swing', 'shoot']
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
         self.attacking = False
+        self.canShoot = False
     
-    def draw(self, cx, cy, xpLevel, sight): 
-        self.sight = Arc(cx, cy, sight*15 + 50, sight*15 + 50, -45, 90, fill = 'gainsboro', opacity = 75)
+    def draw(self, cx, cy, level): 
+        self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'gainsboro', opacity = 75)
         self.body = Circle(cx, cy, 7, fill = 'white', border = 'black')
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
-        self.swing = Arc(cx, cy, 30*xpLevel, 30*xpLevel, -55, 10, fill = 'red')
+        self.swing = Arc(cx, cy, 30*level, 30*level, -55, 10, fill = 'red')
         self.drawing = Group(self.body, self.sight, self.swing, self.hitbox)
     
     def movement(self, key): 
         controls = {
-            Keybinds.movement['up'] : [0, -self.dy], 
-            Keybinds.movement['down'] : [0, self.dy], 
-            Keybinds.movement['left'] : [-self.dx, 0], 
-            Keybinds.movement['right'] : [self.dx, 0], 
+            Keybinds.up : [0, -self.dy], 
+            Keybinds.down : [0, self.dy], 
+            Keybinds.left : [-self.dx, 0], 
+            Keybinds.right : [self.dx, 0], 
             }
         if key in controls : 
             self.drawing.centerX += controls[key][0]
@@ -68,13 +69,13 @@ class Player(object):
             self.sight.rotateAngle = angle
             self.swing.rotateAngle = angle
     def collision(self): 
-        if game.room.walls.hits(self.hitbox.right, self.hitbox.centerY) or self.hitbox.right > 400:     # left side of wall, going right 
+        if game.room.walls.hits(self.hitbox.right, self.hitbox.centerY) or self.hitbox.right > 400:      
             self.drawing.centerX -= self.dx
-        if game.room.walls.hits(self.hitbox.left, self.hitbox.centerY) or self.hitbox.left < 0:         # right side of wall, going left
+        if game.room.walls.hits(self.hitbox.left, self.hitbox.centerY) or self.hitbox.left < 0:         
             self.drawing.centerX += self.dx
-        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.top) or self.hitbox.top < 0:           # top of wall, going down
+        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.top) or self.hitbox.top < 0:           
             self.drawing.centerY += self.dy
-        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.bottom) or self.hitbox.bottom > 400:   # bottom of wall, going up 
+        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.bottom) or self.hitbox.bottom > 400:   
             self.drawing.centerY -= self.dy
     def attackSwing(self): 
         if self.attacking == True: 
@@ -87,10 +88,16 @@ class Player(object):
                 self.swing.rotateAngle = self.sight.rotateAngle
         else: 
             self.swing.opacity = 0
+    def shootPhysics(self): 
+        if self.canShoot == True: 
+            self.projectiles = Group()
+            bullet = Projectile(self.hitbox.centerX, self.hitbox.centerY, 'red', 'basic')
+            self.projectiles.add(bullet)
+
     def handleActionIndex(self, key): 
-        if key == Keybinds.movement['actionIndexDown'] : 
+        if key == Keybinds.actionIndexDown : 
             self.currentActionIndex -= 1
-        if key == Keybinds.movement['actionIndexUp'] : 
+        if key == Keybinds.actionIndexUp : 
             self.currentActionIndex += 1
         if self.currentActionIndex > 2 : 
             self.currentActionIndex = 0
@@ -107,13 +114,24 @@ class Player(object):
         self.lookRotation(game.room.cursorX, game.room.cursorY)
         self.collision()
         self.attackSwing()
+        self.shootPhysics()
 
         self.currentAction = self.actions[self.currentActionIndex]
 
-    def handleMousePress(self): 
+    def handleMousePress(self, x, y): 
         if game.room.roomID != 0 : 
             if self.currentAction == 'swing' : 
                 self.attacking = True 
+            if self.currentAction == 'shoot' : 
+                self.shooting = False
+
+class Projectile(object): # making Projectiles a Class so the player can shoot multiple bullets and make enemies that shoot
+    def __init__(self, cx, cy, angle, colour, type):
+        self.drawing = Circle(cx, cy, 3, fill = colour)
+        self.moveX, self.moveY = getPointInDir(cx, cy, angle, 400)
+
+    def move(self): 
+        pass 
 
 def onKeyHold(keys):     
     player.handleOnKeys(keys)
@@ -126,13 +144,13 @@ def onMouseDrag(x, y):
     game.room.cursorX = x
     game.room.cursorY = y
 def onMousePress(x, y): 
-    player.handleMousePress()
+    player.handleMousePress(x, y)
 
 def onStep(): 
     player.handleOnStep()
     game.room.handleOnStep()
 
 game = GameState()
-player = Player(200, 200, 5, 5)
+player = Player(200, 200, 5)
 
 cmu_graphics.run()
