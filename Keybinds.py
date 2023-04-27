@@ -3,6 +3,7 @@ movement = {
     'down' : 's',
     'left' : 'a',
     'right' : 'd',
-    'dash' : 'e'
+    'actionIndexUp' : 'e', 
+    'actionIndexDown' : 'q', 
 }
 

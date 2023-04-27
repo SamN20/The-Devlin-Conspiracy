@@ -1,4 +1,5 @@
 from cmu_graphics import * 
+import Keybinds
 
 app.stepsPerSecond = 120
 
@@ -53,10 +54,10 @@ class Player(object):
     
     def movement(self, key): 
         controls = {
-            'w' : [0, -self.dy], 
-            's' : [0, self.dy], 
-            'a' : [-self.dx, 0], 
-            'd' : [self.dx, 0], 
+            Keybinds.movement['up'] : [0, -self.dy], 
+            Keybinds.movement['down'] : [0, self.dy], 
+            Keybinds.movement['left'] : [-self.dx, 0], 
+            Keybinds.movement['right'] : [self.dx, 0], 
             }
         if key in controls : 
             self.drawing.centerX += controls[key][0]
@@ -87,9 +88,9 @@ class Player(object):
         else: 
             self.swing.opacity = 0
     def handleActionIndex(self, key): 
-        if key == 'q': 
+        if key == Keybinds.movement['actionIndexDown'] : 
             self.currentActionIndex -= 1
-        if key == 'e': 
+        if key == Keybinds.movement['actionIndexUp'] : 
             self.currentActionIndex += 1
         if self.currentActionIndex > 2 : 
             self.currentActionIndex = 0
