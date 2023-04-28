@@ -43,7 +43,7 @@ class Player(object):
         self.dx = 0.5
         self.dy = 0.5
         self.dashDistance = 50
-        self.dashSpeed = 7
+        self.dashSpeed = 2
         self.isDashing = False
         self.actions = ['dash', 'swing', 'shoot']
         self.currentActionIndex = 0
@@ -57,7 +57,6 @@ class Player(object):
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
         self.swing = Arc(cx, cy, 30*level, 30*level, -55, 10, fill = 'red')
         self.drawing = Group(self.body, self.sight, self.swing, self.hitbox)
-        self.drawing = Group(self.body, self.sight, self.hitbox)
     
     def movement(self, key): 
         controls = {
@@ -75,8 +74,8 @@ class Player(object):
             drawingPeice.centerX, drawingPeice.centerY = x, y
 
     def dash(self):
-        if not self.isDashing:
-            return
+        # if not self.isDashing:
+        #     return
 
         dist = distance(self.dashToX, self.dashToY, self.hitbox.centerX, self.hitbox.centerY)
         
