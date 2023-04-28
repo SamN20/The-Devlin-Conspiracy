@@ -91,7 +91,7 @@ class Player(object):
             self.swing.opacity = 0
     def shoot(self): 
         if self.canShoot == True: 
-            bullet = Projectile(self.hitbox.centerX, self.hitbox.centerY, self.sight.rotateAngle-45, 'red', 'basic')
+            bullet = Projectile(self.hitbox.centerX, self.hitbox.centerY, self.sight.rotateAngle, 'red', 'basic')
             self.projectiles.append(bullet)
             print(bullet.hDis, bullet.vDis, bullet.hDir, bullet.vDir)
     def bulletPhysics(self): 
@@ -134,8 +134,8 @@ class Player(object):
 class Projectile(object): # making Projectiles a Class so the player can shoot multiple bullets and make enemies that shoot
     def __init__(self, cx, cy, angle, colour, type):
         self.drawing = Circle(cx, cy, 3, fill = colour)
-        self.moveX, self.moveY = getPointInDir(cx, cy, angle, 400)
-        self.debug = Circle(self.moveX/2, self.moveY/2, 3, fill = 'blue')
+        self.moveX, self.moveY = getPointInDir(cx, cy, angle, 100)
+        self.debug = Circle(self.moveX, self.moveY, 3, fill = 'blue')
         self.hDis = rounded(distance(cx, cy, self.moveX, cy))
         self.vDis = rounded(distance(cx, cy, cx, self.moveY))
         self.hDir = orientation(cx, cy, self.moveX, cy, 'horizontal')
@@ -185,7 +185,7 @@ def orientation(x1, y1, x2, y2, type): # I know this function made weirdly Sam, 
     if type == 'horizontal' : 
         if (angle >= 270 and angle < 360) or (angle >= 0 and angle < 90): 
             return 'above'
-        if (angle >= 90 and angle < 270): 
+        if (angle >= 90 and angle < 180) or (angle >= 180 and angle < 270): 
             return 'below'
 
 game = GameState()
