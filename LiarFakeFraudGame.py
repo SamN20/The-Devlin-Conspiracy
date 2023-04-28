@@ -1,5 +1,6 @@
 from cmu_graphics import * 
 import Keybinds
+import math
 
 app.stepsPerSecond = 120
 
@@ -24,8 +25,9 @@ class RoomState(object):
             'checkpoint' : False, 
             'savepoint' : False, 
         } 
-        self.walls = Group()
+        self.walls = Group(Rect(100, 100, 10, 100))
         
+
         self.cursorX = 0
         self.cursorY = 0
         self.roomID = 1 # roomID of 0 is for menus, 1 for test map
@@ -41,7 +43,7 @@ class Player(object):
         self.dx = 0.5
         self.dy = 0.5
         self.dashDistance = 50
-        self.dashSpeed = 5
+        self.dashSpeed = 7
         self.isDashing = False
         self.actions = ['dash', 'swing', 'shoot']
         self.currentActionIndex = 0
@@ -73,12 +75,19 @@ class Player(object):
             drawingPeice.centerX, drawingPeice.centerY = x, y
 
     def dash(self):
-        angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY)
-        x, y = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, angle, self.dashSpeed)
-        Circle(x, y, 5)
-        self.moveTo(x, y)
-        if self.hitbox.centerX == self.dashToX + self.dashSpeed and self.hitbox.centerY == self.dashToY + self.dashSpeed:
+        if not self.isDashing:
+            return
+
+        dist = distance(self.dashToX, self.dashToY, self.hitbox.centerX, self.hitbox.centerY)
+        
+        if dist < self.dashSpeed:
+            self.moveTo(self.dashToX, self.dashToY)
             self.isDashing = False
+        else:
+            angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY)
+            x, y = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, angle, self.dashSpeed)
+            self.moveTo(x, y)
+
 
     def lookRotation(self, x, y): 
         angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, x, y)
@@ -148,7 +157,7 @@ class Player(object):
                 self.attacking = True 
             if self.currentAction == 'shoot' : 
                 self.shooting = False
-            if self.currentAction == 'dash':
+            if self.currentAction == 'dash' and self.isDashing == False:
                 self.dashToX, self.dashToY = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, self.sight.rotateAngle, self.dashDistance)
                 Circle(self.dashToX, self.dashToY, 5, fill='blue')
                 self.isDashing = True
