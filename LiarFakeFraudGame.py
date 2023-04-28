@@ -44,7 +44,8 @@ class Player(object):
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
         self.attacking = False
-        self.canShoot = False
+        self.canShoot = True
+        self.projectiles = [ ]
     
     def draw(self, cx, cy, level): 
         self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'gainsboro', opacity = 75)
@@ -88,21 +89,28 @@ class Player(object):
                 self.swing.rotateAngle = self.sight.rotateAngle
         else: 
             self.swing.opacity = 0
-    def shootPhysics(self): 
+    def shoot(self): 
         if self.canShoot == True: 
-            self.projectiles = Group()
-            bullet = Projectile(self.hitbox.centerX, self.hitbox.centerY, 'red', 'basic')
-            self.projectiles.add(bullet)
+            bullet = Projectile(self.hitbox.centerX, self.hitbox.centerY, self.sight.rotateAngle-45, 'red', 'basic')
+            self.projectiles.append(bullet)
+            print(bullet.hDis, bullet.vDis, bullet.hDir, bullet.vDir)
+    def bulletPhysics(self): 
+        for bullet in self.projectiles : 
+            if bullet.drawing.centerX > 410 or bullet.drawing.centerX < -10 : 
+                self.projectiles.remove(bullet)
+            if bullet.drawing.centerY > 410 or bullet.drawing.centerY < -10 : 
+                self.projectiles.remove(bullet)
+            bullet.move()
 
     def handleActionIndex(self, key): 
         if key == Keybinds.actionIndexDown : 
             self.currentActionIndex -= 1
         if key == Keybinds.actionIndexUp : 
             self.currentActionIndex += 1
-        if self.currentActionIndex > 2 : 
+        if self.currentActionIndex > len(self.actions) - 1 : 
             self.currentActionIndex = 0
         if self.currentActionIndex < 0 : 
-            self.currentActionIndex = 2
+            self.currentActionIndex = len(self.actions) - 1
 
     def handleOnKeys(self, keys): 
         for key in keys: 
@@ -114,24 +122,27 @@ class Player(object):
         self.lookRotation(game.room.cursorX, game.room.cursorY)
         self.collision()
         self.attackSwing()
-        self.shootPhysics()
-
+        self.bulletPhysics()
         self.currentAction = self.actions[self.currentActionIndex]
-
     def handleMousePress(self, x, y): 
         if game.room.roomID != 0 : 
             if self.currentAction == 'swing' : 
                 self.attacking = True 
             if self.currentAction == 'shoot' : 
-                self.shooting = False
+                self.shoot()
 
 class Projectile(object): # making Projectiles a Class so the player can shoot multiple bullets and make enemies that shoot
     def __init__(self, cx, cy, angle, colour, type):
         self.drawing = Circle(cx, cy, 3, fill = colour)
         self.moveX, self.moveY = getPointInDir(cx, cy, angle, 400)
+        self.debug = Circle(self.moveX/2, self.moveY/2, 3, fill = 'blue')
+        self.hDis = rounded(distance(cx, cy, self.moveX, cy))
+        self.vDis = rounded(distance(cx, cy, cx, self.moveY))
+        self.hDir = orientation(cx, cy, self.moveX, cy, 'horizontal')
+        self.vDir = orientation(cx, cy, cx, self.moveY, 'vertical')
 
     def move(self): 
-        pass 
+        pass
 
 def onKeyHold(keys):     
     player.handleOnKeys(keys)
@@ -147,8 +158,35 @@ def onMousePress(x, y):
     player.handleMousePress(x, y)
 
 def onStep(): 
-    player.handleOnStep()
-    game.room.handleOnStep()
+    player.handleOnStep() 
+    game.room.handleOnStep() 
+
+def mapValue(value, valueMin, valueMax, targetMin, targetMax):
+    ratio = (value-valueMin) / (valueMax-valueMin)
+    result = ratio * (targetMax-targetMin) + targetMin
+    return result
+
+def orientation(x1, y1, x2, y2, type): # I know this function made weirdly Sam, it's fine
+    angle = rounded(angleTo(x1, y1, x2, y2))
+    if type == 'diagonal' : 
+        if angle >= 0 and angle < 90: 
+            return 'topRight'
+        if angle >= 90 and angle < 180: 
+            return 'bottomRight'
+        if angle >= 180 and angle < 270: 
+            return 'bottomLeft'
+        if angle >= 270 and angle < 360: 
+            return 'topLeft'
+    if type == 'vertical' : 
+        if (angle >= 0 and angle < 180): 
+            return 'right'
+        if (angle >= 180 and angle < 360): 
+            return 'left'
+    if type == 'horizontal' : 
+        if (angle >= 270 and angle < 360) or (angle >= 0 and angle < 90): 
+            return 'above'
+        if (angle >= 90 and angle < 270): 
+            return 'below'
 
 game = GameState()
 player = Player(200, 200, 5)
