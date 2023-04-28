@@ -41,6 +41,8 @@ class Player(object):
         self.dx = 0.5
         self.dy = 0.5
         self.dashDistance = 50
+        self.dashSpeed = 5
+        self.isDashing = False
         self.actions = ['dash', 'swing', 'shoot']
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
@@ -53,6 +55,7 @@ class Player(object):
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
         self.swing = Arc(cx, cy, 30*level, 30*level, -55, 10, fill = 'red')
         self.drawing = Group(self.body, self.sight, self.swing, self.hitbox)
+        self.drawing = Group(self.body, self.sight, self.hitbox)
     
     def movement(self, key): 
         controls = {
@@ -65,9 +68,17 @@ class Player(object):
             self.drawing.centerX += controls[key][0]
             self.drawing.centerY += controls[key][1]
 
+    def moveTo(self, x, y):
+        for drawingPeice in self.drawing:
+            drawingPeice.centerX, drawingPeice.centerY = x, y
+
     def dash(self):
-        dashToX, dashToY = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, self.sight.rotateAngle, self.dashDistance)
-        Circle(dashToX, dashToY, 5, fill='blue')
+        angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY)
+        x, y = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, angle, self.dashSpeed)
+        Circle(x, y, 5)
+        self.moveTo(x, y)
+        if self.hitbox.centerX == self.dashToX + self.dashSpeed and self.hitbox.centerY == self.dashToY + self.dashSpeed:
+            self.isDashing = False
 
     def lookRotation(self, x, y): 
         angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, x, y)
@@ -126,6 +137,8 @@ class Player(object):
         self.collision()
         self.attackSwing()
         self.shootPhysics()
+        if self.isDashing == True:
+            self.dash()
 
         self.currentAction = self.actions[self.currentActionIndex]
 
@@ -136,7 +149,9 @@ class Player(object):
             if self.currentAction == 'shoot' : 
                 self.shooting = False
             if self.currentAction == 'dash':
-                self.dash()
+                self.dashToX, self.dashToY = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, self.sight.rotateAngle, self.dashDistance)
+                Circle(self.dashToX, self.dashToY, 5, fill='blue')
+                self.isDashing = True
 
 class Projectile(object): # making Projectiles a Class so the player can shoot multiple bullets and make enemies that shoot
     def __init__(self, cx, cy, angle, colour, type):
