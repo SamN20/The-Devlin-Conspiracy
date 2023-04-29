@@ -1,21 +1,11 @@
 from cmu_graphics import * 
 
+test = Sound("D:\TDC\The-Devlin-Conspiracy\CantinaBand3.wav")
 
-# [attack distance, player speed, ]
-xpModifyers = {
-    '5': [30, ]
+def onMousePress(x,y):
+    test.play(loop=True)
 
-
-
-
-}
-
-def onKeyPress(key, modifiers):
-    print(key)
-    print(modifiers)
-
-
-
-    # rdyguhijkl
+def onMouseDrag(x,y):
+    test.pause()
 
 cmu_graphics.run()

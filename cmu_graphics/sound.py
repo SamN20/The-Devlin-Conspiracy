@@ -1,4 +1,4 @@
-from libs import webrequest
+# from libs import webrequest
 import json
 import io
 ### ZIPFILE VERSION ###
@@ -47,9 +47,8 @@ import os
 import sys
 
 def main():
-    soundUrl = json.loads(sys.stdin.readline())['url']
-    response = webrequest.get(soundUrl)
-    s = Sound(io.BytesIO(response.read()))
+    soundFile = sys.argv[1]  # read sound file path from command line argument
+    s = Sound(soundFile)
     print('done')
 
     while True:
@@ -59,6 +58,7 @@ def main():
         commandMap = {'pause': s.pause, 'play': s.play}
         commandMap[command](**kwargs)
         print('done')
+
 
 if __name__ == "__main__":
     main()

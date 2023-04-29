@@ -180,15 +180,43 @@ class Group(Shape):
 
     def __len__(self): return len(self._shape._shapes)
 
+# class Sound(object):
+#     def __init__(self, url):
+#         self.sound = slNewSound(url)
+
+#     def play(self, **kwargs):
+#         default_kwargs = {'loop': False, 'restart': False}
+
+#         for keyword in kwargs:
+#             english_keyword = toEnglish(keyword, 'shape-attr')
+#             if english_keyword not in default_kwargs:
+#                 raise Exception("TypeError: %s.%s() got an unexpected keyword argument '%s'" % (t('Sound'), t('play'), keyword))
+#             default_kwargs[english_keyword] = kwargs[keyword]
+
+#         loop = default_kwargs['loop']
+#         restart = default_kwargs['restart']
+
+#         if not isinstance(loop, bool):
+#             raise Exception('The loop argument to Sound.play must be True or False, got ' + repr(loop))
+#         if not isinstance(restart, bool):
+#             raise Exception('The restart argument to Sound.play must be True or False, got ' + repr(restart))
+#         self.sound.play(loop, restart)
+
+#     def pause(self):
+#         self.sound.pause()
+
+import pygame.mixer as mixer
+
 class Sound(object):
-    def __init__(self, url):
-        self.sound = slNewSound(url)
+    def __init__(self, file):
+        mixer.init()
+        self.sound = mixer.Sound(file)
 
     def play(self, **kwargs):
         default_kwargs = {'loop': False, 'restart': False}
 
         for keyword in kwargs:
-            english_keyword = toEnglish(keyword, 'shape-attr')
+            english_keyword = keyword
             if english_keyword not in default_kwargs:
                 raise Exception("TypeError: %s.%s() got an unexpected keyword argument '%s'" % (t('Sound'), t('play'), keyword))
             default_kwargs[english_keyword] = kwargs[keyword]
@@ -200,10 +228,14 @@ class Sound(object):
             raise Exception('The loop argument to Sound.play must be True or False, got ' + repr(loop))
         if not isinstance(restart, bool):
             raise Exception('The restart argument to Sound.play must be True or False, got ' + repr(restart))
-        self.sound.play(loop, restart)
+        if loop:
+            self.sound.play(-1)
+        else:
+            self.sound.play()
 
     def pause(self):
-        self.sound.pause()
+        self.sound.stop()
+
 
 SHAPES = [ Arc, Circle, Image, Label, Line, Oval,
             Polygon, Rect, RegularPolygon, Star, ]
