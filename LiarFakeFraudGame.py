@@ -42,6 +42,7 @@ class Player(object):
         self.dx = 0
         self.dy = 0
         self.speed = 0.5
+        self.canMove = True
         
         self.dashDistance = 75
         self.dashSpeed = 3
