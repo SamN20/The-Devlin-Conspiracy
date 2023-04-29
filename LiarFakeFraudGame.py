@@ -24,7 +24,7 @@ class RoomState(object):
             'checkpoint' : False, 
             'savepoint' : False, 
         } 
-        self.walls = Group()
+        self.walls = Group(Rect(100, 100, 10, 100))
         
         self.cursorX = 200
         self.cursorY = 200
@@ -38,10 +38,15 @@ class RoomState(object):
 class Player(object): 
     def __init__(self, cx, cy, level): 
         self.draw(cx, cy, level)
+        
         self.dx = 0
         self.dy = 0
         self.speed = 0.5
         
+        self.dashDistance = 75
+        self.dashSpeed = 3
+        self.isDashing = False
+
         self.moveMod = 0
         self.shootMod = 0 
         self.swingMod = 0
@@ -80,11 +85,34 @@ class Player(object):
         if key in controls : 
             self.drawing.centerX += controls[key][0]
             self.drawing.centerY += controls[key][1]
+
+    def moveTo(self, x, y):
+        for drawingPiece in self.drawing:
+            drawingPiece.centerX, drawingPiece.centerY = x, y
+
+    def getDashDestination(self):
+        return getPointInDir(self.hitbox.centerX, self.hitbox.centerY, self.sight.rotateAngle, self.dashDistance) 
+
+    def dash(self):
+        dist = distance(self.dashToX, self.dashToY, self.hitbox.centerX, self.hitbox.centerY)
+
+        if dist < self.dashSpeed:
+            self.moveTo(self.dashToX, self.dashToY)
+            self.isDashing = False
+        else:
+            angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY)
+            x, y = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, angle, self.dashSpeed)
+            if game.room.walls.hits(x, y) == True:
+                self.isDashing = False
+            else:
+                self.moveTo(x, y)
+
     def lookRotation(self, x, y): 
         angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, x, y)
         if self.attacking == False : 
             self.sight.rotateAngle = angle
             self.swing.rotateAngle = angle
+    
     def collision(self): 
         if game.room.walls.hits(self.hitbox.right, self.hitbox.centerY) or self.hitbox.right > 400:      
             self.drawing.centerX -= self.speed
@@ -94,6 +122,7 @@ class Player(object):
             self.drawing.centerY += self.speed
         if game.room.walls.hits(self.hitbox.centerX, self.hitbox.bottom) or self.hitbox.bottom > 400:   
             self.drawing.centerY -= self.speed
+
     def swingAttack(self): 
         if self.canSwing == True:
             self.attacking = True 
@@ -153,15 +182,21 @@ class Player(object):
 
     def handleOnKeys(self, keys): 
         for key in keys: 
-            self.movement(key)
+            if self.canMove and self.isDashing == False:
+                self.movement(key)
+    
     def handleKeyPress(self, key): 
         self.handleActionIndex(key)
         print(self.currentActionIndex, self.currentAction)
+    
     def handleOnStep(self): 
         self.lookRotation(game.room.cursorX, game.room.cursorY)
         self.collision()
         self.attackSwing()
         self.shootPhysics()
+        if self.isDashing == True:
+            self.dash()
+
         self.updatePlayer()
         self.currentAction = self.actions[self.currentActionIndex]
 
@@ -170,8 +205,15 @@ class Player(object):
         if game.room.roomID != 0 : 
             if self.currentAction == 'swing': 
                 self.swingAttack()
+                
             if self.currentAction == 'shoot' : 
+                self.shooting = False
                 self.shoot()
+
+            if self.currentAction == 'dash' and self.isDashing == False:
+                self.dashToX, self.dashToY = self.getDashDestination()
+                self.isDashing = True
+                
 
 class Projectile(object): 
     def __init__(self, cx, cy, angle, colour):

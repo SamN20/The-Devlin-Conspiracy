@@ -19,7 +19,7 @@ class Player(object):
 
     def movement(self, key): 
         controls = {
-            Keybinds.movement['up'] : [0, -self.dy], 
+            'w' : [0, -self.dy], 
             's' : [0, self.dy], 
             'a' : [-self.dx, 0], 
             'd' : [self.dx, 0], 
