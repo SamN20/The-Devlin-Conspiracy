@@ -1,6 +1,5 @@
 from cmu_graphics import * 
 import Keybinds
-import math
 
 app.stepsPerSecond = 120
 
