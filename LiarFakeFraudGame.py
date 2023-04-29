@@ -39,23 +39,23 @@ class Player(object):
     def __init__(self, cx, cy, level): 
         self.draw(cx, cy, level)
         
-        self.dx = 0
-        self.dy = 0
-        self.speed = 0.5
-        self.canMove = True
-        
-        self.dashDistance = 75
-        self.dashSpeed = 3
-        self.isDashing = False
-
         self.moveMod = 0
         self.shootMod = 0 
         self.swingMod = 0
         self.dashMod = 0
 
+        self.dx = 0
+        self.dy = 0
+        self.speed = 0.5 + 0.5*self.moveMod
+        self.canMove = True
+
         self.actions = ['dash', 'swing', 'shoot']
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
+        
+        self.dashDistance = 50 + 25*self.dashMod
+        self.dashSpeed = 1 + 0.5*self.dashMod
+        self.isDashing = False
         
         self.canSwing = True 
         self.attacking = False
