@@ -205,12 +205,18 @@ class Group(Shape):
 #     def pause(self):
 #         self.sound.pause()
 
-import pygame.mixer as mixer
+### ZIPFILE VERSION ###
+from cmu_graphics.libs import pygame_loader as pg
+### END ZIPFILE VERSION ###
 
 class Sound(object):
     def __init__(self, file):
-        mixer.init()
-        self.sound = mixer.Sound(file)
+        global pygame
+        pygame = pg
+        pygame.mixer.init()
+        self.sound = pygame.mixer.Sound(file)
+        
+
 
     def play(self, **kwargs):
         default_kwargs = {'loop': False, 'restart': False}
