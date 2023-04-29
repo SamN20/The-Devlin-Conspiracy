@@ -42,14 +42,15 @@ class Player(object):
         self.draw(cx, cy, level)
         self.dx = 0.5
         self.dy = 0.5
-        self.dashDistance = 50
-        self.dashSpeed = 2
+        self.dashDistance = 75
+        self.dashSpeed = 3
         self.isDashing = False
         self.actions = ['dash', 'swing', 'shoot']
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
         self.attacking = False
         self.canShoot = False
+        self.canMove = True
     
     def draw(self, cx, cy, level): 
         self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'gainsboro', opacity = 75)
@@ -70,23 +71,25 @@ class Player(object):
             self.drawing.centerY += controls[key][1]
 
     def moveTo(self, x, y):
-        for drawingPeice in self.drawing:
-            drawingPeice.centerX, drawingPeice.centerY = x, y
+        for drawingPiece in self.drawing:
+            drawingPiece.centerX, drawingPiece.centerY = x, y
+
+    def getDashDestination(self):
+        return getPointInDir(self.hitbox.centerX, self.hitbox.centerY, self.sight.rotateAngle, self.dashDistance) 
 
     def dash(self):
-        # if not self.isDashing:
-        #     return
-
         dist = distance(self.dashToX, self.dashToY, self.hitbox.centerX, self.hitbox.centerY)
-        
+
         if dist < self.dashSpeed:
             self.moveTo(self.dashToX, self.dashToY)
             self.isDashing = False
         else:
             angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY)
             x, y = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, angle, self.dashSpeed)
-            self.moveTo(x, y)
-
+            if game.room.walls.hits(x, y) == True:
+                self.isDashing = False
+            else:
+                self.moveTo(x, y)
 
     def lookRotation(self, x, y): 
         angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, x, y)
@@ -134,7 +137,8 @@ class Player(object):
 
     def handleOnKeys(self, keys): 
         for key in keys: 
-            self.movement(key)
+            if self.canMove and self.isDashing == False:
+                self.movement(key)
     
     def handleKeyPress(self, key): 
         self.handleActionIndex(key)
@@ -157,8 +161,7 @@ class Player(object):
             if self.currentAction == 'shoot' : 
                 self.shooting = False
             if self.currentAction == 'dash' and self.isDashing == False:
-                self.dashToX, self.dashToY = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, self.sight.rotateAngle, self.dashDistance)
-                Circle(self.dashToX, self.dashToY, 5, fill='blue')
+                self.dashToX, self.dashToY = self.getDashDestination()
                 self.isDashing = True
 
 class Projectile(object): # making Projectiles a Class so the player can shoot multiple bullets and make enemies that shoot
