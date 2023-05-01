@@ -8,4 +8,6 @@ def onMousePress(x,y):
 def onMouseDrag(x,y):
     test.pause()
 
+Image("Images/testimage.png", 0, 0, height=70, width=70)
+
 cmu_graphics.run()
