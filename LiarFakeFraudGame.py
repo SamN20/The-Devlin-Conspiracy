@@ -25,12 +25,13 @@ class RoomState(object):
             'savepoint' : False, 
         } 
         self.walls = Group(Rect(100, 100, 10, 100))
+        self.thingsWithCollision = Group(self.walls)
         
         self.cursorX = 200
         self.cursorY = 200
         self.roomID = 1 # roomID of 0 is for menus, 1 for test map
 
-        self.items = [Item(200, 100, 'dashItem'), Item(250, 100, 'swingItem')]
+        self.items = [Item(200, 100, 'dashItem'), Item(250, 100, 'swingItem'), Item(300, 100, 'shootItem')]
 
         self.cursor = Circle(0, 0, 10, border = 'red', fill = None) 
     def handleOnStep(self): 
@@ -51,7 +52,7 @@ class Player(object):
         self.speed = 0.5 + 0.5*self.moveMod
         self.canMove = True
     
-        self.actions = ['shoot']
+        self.actions = [None]
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
         
@@ -251,30 +252,42 @@ class Projectile(object):
     def handleOnStep(self): 
         if self.drawing.centerX > 410 or self.drawing.centerX < -10 or self.drawing.centerY > 410 or self.drawing.centerY < -10 : 
             self.clear()
+        if self.drawing.hitsShape(game.room.thingsWithCollision) == True : 
+            self.clear()
 
 class Item (object): 
     def __init__(self, cx, cy, type): 
         self.itemType = type
         self.draw(cx, cy)
     def draw(self, cx, cy): 
-        self.hitbox = Group(Circle(cx, cy, 5, opacity = 0))
+        self.hitbox = Circle(cx, cy, 5, opacity = 0)
         if self.itemType == 'dashItem': 
             self.model = Group(Rect(cx, cy, 6, 3, fill = 'saddleBrown'), Rect(cx+9, cy, 6, 3, fill = 'saddleBrown'), 
                                Rect(cx+3, cy-6, 3, 6, fill = 'maroon'), Rect(cx+9, cy-6, 3, 6, fill = 'maroon'))
             self.model.centerX, self.model.centerY = self.hitbox.centerX, self.hitbox.centerY
         if self.itemType == 'swingItem': 
-            self.model = Group(Line(cx, cy, cx+5, cy-5, fill = 'saddleBrown'), Line(cx+2, cy-9, cx+9, cy-2), Line(cx+6, cy-6, cx+18, cy-18, fill = 'saddleBrown', lineWidth = 4))
+            self.model = Group(Line(cx, cy, cx+5, cy-5, fill = 'saddleBrown'), Line(cx+2, cy-9, cx+9, cy-2), 
+                            Line(cx+6, cy-6, cx+18, cy-18, fill = 'saddleBrown', lineWidth = 4))
             self.model.centerX, self.model.centerY = self.hitbox.centerX, self.hitbox.centerY
+        if self.itemType == 'shootItem': 
+            self.model = Group(Line(cx, cy, cx+13, cy-13), Circle(cx+13, cy-13, 4, fill = 'red'))
+            self.model.centerX, self.model.centerY = self.hitbox.centerX, self.hitbox.centerY
+        
         self.drawing = Group(self.hitbox, self.model)
 
     def hasBeenCollected(self): 
         self.clear()
+        if None in player.actions: 
+            player.actions.remove(None)
         if self.itemType == 'dashItem': 
             player.hasDash = True
             player.actions.append('dash')
         if self.itemType == 'swingItem': 
             player.hasSwing = True
             player.actions.append('swing')
+        if self.itemType == 'shootItem': 
+            player.hasShoot = True
+            player.actions.append('shoot')
     
     
     def clear(self): 
