@@ -257,7 +257,7 @@ class Item (object):
         self.itemType = type
         self.draw(cx, cy)
     def draw(self, cx, cy): 
-        self.hitbox = Group(Circle(cx, cy, 5, opacity = 50))
+        self.hitbox = Group(Circle(cx, cy, 5, opacity = 0))
         if self.itemType == 'dashItem': 
             self.model = Group(Rect(cx, cy, 6, 3, fill = 'saddleBrown'), Rect(cx+9, cy, 6, 3, fill = 'saddleBrown'), 
                                Rect(cx+3, cy-6, 3, 6, fill = 'maroon'), Rect(cx+9, cy-6, 3, 6, fill = 'maroon'))
