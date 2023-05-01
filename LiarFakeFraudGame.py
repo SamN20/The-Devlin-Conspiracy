@@ -25,10 +25,13 @@ class RoomState(object):
             'savepoint' : False, 
         } 
         self.walls = Group(Rect(100, 100, 10, 100))
+        self.thingsWithCollision = Group(self.walls)
         
         self.cursorX = 200
         self.cursorY = 200
         self.roomID = 1 # roomID of 0 is for menus, 1 for test map
+
+        self.items = [Item(200, 100, 'dashItem'), Item(250, 100, 'swingItem'), Item(300, 100, 'shootItem')]
 
         self.cursor = Circle(0, 0, 10, border = 'red', fill = None) 
     def handleOnStep(self): 
@@ -39,42 +42,48 @@ class Player(object):
     def __init__(self, cx, cy, level): 
         self.draw(cx, cy, level)
         
-        self.moveMod = 0
+        self.moveMod = 0 
         self.shootMod = 0 
         self.swingMod = 0
-        self.dashMod = 0
+        self.dashMod = 0 
 
         self.dx = 0
         self.dy = 0
         self.speed = 0.5 + 0.5*self.moveMod
         self.canMove = True
-
-        self.actions = ['dash', 'swing', 'shoot']
+    
+        self.actions = [None]
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
         
-        self.dashDistance = 50 + 25*self.dashMod
-        self.dashSpeed = 1 + 0.5*self.dashMod
+        self.hasDash = False
+        self.canDash = True
+        self.dashDistance = 75 + 25*self.dashMod
+        self.dashSpeed = 1 + 0.25*self.dashMod
         self.isDashing = False
+        self.dashDelay = 240 - 30*self.dashMod
+        self.dashCooldown = 0
         
+        self.hasSwing = False
         self.canSwing = True 
         self.attacking = False
         self.swingDelay = 240 - 30*self.swingMod
         self.swingCooldown = 0
         
+        self.hasShoot = False
         self.canShoot = True
         self.bullets = [ ]
-        self.shootDelay = 240 - 30*self.shootMod
+        self.shootDelay = 180 - 30*self.shootMod
         self.shootCooldown = 0
 
         self.coolDownTimerList = [self.swingCooldown, self.shootCooldown]
     
     def draw(self, cx, cy, level): 
-        self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'gainsboro', opacity = 75)
+        self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'gainsboro', opacity = 50)
         self.body = Circle(cx, cy, 7, fill = 'white', border = 'black')
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
-        self.swing = Arc(cx, cy, 30*level, 30*level, -55, 10, fill = 'red')
-        self.drawing = Group(self.body, self.sight, self.swing, self.hitbox)
+        self.swing = Arc(cx, cy, 30*level, 30*level, -55, 10, fill = 'saddleBrown')
+        self.drawing = Group(self.sight, self.body, self.swing, self.hitbox)
     
     def movement(self, key): 
         controls = {
@@ -92,21 +101,26 @@ class Player(object):
             drawingPiece.centerX, drawingPiece.centerY = x, y
 
     def getDashDestination(self):
-        return getPointInDir(self.hitbox.centerX, self.hitbox.centerY, self.sight.rotateAngle, self.dashDistance) 
+        return getPointInDir(self.hitbox.centerX, self.hitbox.centerY, self.sight.rotateAngle, self.dashDistance)
 
     def dash(self):
-        dist = distance(self.dashToX, self.dashToY, self.hitbox.centerX, self.hitbox.centerY)
-
-        if dist < self.dashSpeed:
-            self.moveTo(self.dashToX, self.dashToY)
-            self.isDashing = False
-        else:
-            angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY)
-            x, y = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, angle, self.dashSpeed)
-            if game.room.walls.hits(x, y) == True:
-                self.isDashing = False
-            else:
-                self.moveTo(x, y)
+        if self.canDash == True and self.hasDash == True: 
+            if self.isDashing == True: 
+                dist = distance(self.dashToX, self.dashToY, self.hitbox.centerX, self.hitbox.centerY)
+                if dist < self.dashSpeed:
+                    self.moveTo(self.dashToX, self.dashToY)
+                    self.isDashing = False
+                    self.dashCooldown = self.dashDelay
+                    self.canDash = False
+                    self.dashRange.clear()
+                else:
+                    angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY)
+                    x, y = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, angle, self.dashSpeed)
+                    if game.room.walls.hits(x, y) == True: 
+                        self.isDashing = False
+                        self.dashRange.clear()
+                    else:
+                        self.moveTo(x, y)
 
     def lookRotation(self, x, y): 
         angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, x, y)
@@ -125,14 +139,14 @@ class Player(object):
             self.drawing.centerY -= self.speed
 
     def swingAttack(self): 
-        if self.canSwing == True:
+        if self.canSwing == True and player.hasSwing == True:
             self.attacking = True 
             self.canSwing = False
             self.swingCooldown = self.swingDelay
     
     def attackSwing(self): 
         if self.attacking == True: 
-            self.swing.opacity = 100
+            self.swing.opacity = 75
             finishAngle = self.sight.rotateAngle + 95
             self.swing.rotateAngle += (1.5 + self.swingMod)
             
@@ -153,7 +167,7 @@ class Player(object):
             
     def shootPhysics(self): 
         for bullet in self.bullets : 
-            bullet.move('basic', self.shootMod)
+            bullet.move('basic', 0.25*self.shootMod)
             bullet.handleOnStep()
             if bullet.loaded == False : 
                 self.bullets.remove(bullet)
@@ -163,12 +177,20 @@ class Player(object):
            self.swingCooldown -= 1
         if self.shootCooldown != 0:
            self.shootCooldown -= 1
-            
+        if self.dashCooldown != 0: 
+            self.dashCooldown -= 1
     def updatePlayer(self): 
         if self.shootCooldown == 0: 
             self.canShoot = True 
         if self.swingCooldown == 0: 
             self.canSwing = True
+        if self.dashCooldown == 0: 
+            self.canDash = True
+
+    def collect(self): 
+        for item in game.room.items: 
+            if distance(self.hitbox.centerX, self.hitbox.centerY, item.hitbox.centerX, item.hitbox.centerY) < 30: 
+                item.hasBeenCollected()
 
     def handleActionIndex(self, key): 
         if key == Keybinds.actionIndexDown : 
@@ -180,27 +202,22 @@ class Player(object):
             self.currentActionIndex = 0
         if self.currentActionIndex < 0 : 
             self.currentActionIndex = len(self.actions) - 1
-
     def handleOnKeys(self, keys): 
         for key in keys: 
             if self.canMove and self.isDashing == False:
                 self.movement(key)
-    
     def handleKeyPress(self, key): 
         self.handleActionIndex(key)
-        print(self.currentActionIndex, self.currentAction)
-    
+        if key == Keybinds.collect: 
+            self.collect()
     def handleOnStep(self): 
         self.lookRotation(game.room.cursorX, game.room.cursorY)
         self.collision()
         self.attackSwing()
         self.shootPhysics()
-        if self.isDashing == True:
-            self.dash()
-
+        self.dash()
         self.updatePlayer()
         self.currentAction = self.actions[self.currentActionIndex]
-
         self.manageTimers()
     def handleMousePress(self, x, y): 
         if game.room.roomID != 0 : 
@@ -211,9 +228,10 @@ class Player(object):
                 self.shooting = False
                 self.shoot()
 
-            if self.currentAction == 'dash' and self.isDashing == False:
+            if self.currentAction == 'dash' and self.isDashing == False and self.canDash == True and self.hasDash == True:
                 self.dashToX, self.dashToY = self.getDashDestination()
                 self.isDashing = True
+                self.dashRange = Group(Line(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY, fill = 'blue', opacity = 25))
                 
 
 class Projectile(object): 
@@ -234,6 +252,46 @@ class Projectile(object):
     def handleOnStep(self): 
         if self.drawing.centerX > 410 or self.drawing.centerX < -10 or self.drawing.centerY > 410 or self.drawing.centerY < -10 : 
             self.clear()
+        if self.drawing.hitsShape(game.room.thingsWithCollision) == True : 
+            self.clear()
+
+class Item (object): 
+    def __init__(self, cx, cy, type): 
+        self.itemType = type
+        self.draw(cx, cy)
+    def draw(self, cx, cy): 
+        self.hitbox = Circle(cx, cy, 5, opacity = 0)
+        if self.itemType == 'dashItem': 
+            self.model = Group(Rect(cx, cy, 6, 3, fill = 'saddleBrown'), Rect(cx+9, cy, 6, 3, fill = 'saddleBrown'), 
+                               Rect(cx+3, cy-6, 3, 6, fill = 'maroon'), Rect(cx+9, cy-6, 3, 6, fill = 'maroon'))
+            self.model.centerX, self.model.centerY = self.hitbox.centerX, self.hitbox.centerY
+        if self.itemType == 'swingItem': 
+            self.model = Group(Line(cx, cy, cx+5, cy-5, fill = 'saddleBrown'), Line(cx+2, cy-9, cx+9, cy-2), 
+                            Line(cx+6, cy-6, cx+18, cy-18, fill = 'saddleBrown', lineWidth = 4))
+            self.model.centerX, self.model.centerY = self.hitbox.centerX, self.hitbox.centerY
+        if self.itemType == 'shootItem': 
+            self.model = Group(Line(cx, cy, cx+13, cy-13), Circle(cx+13, cy-13, 4, fill = 'red'))
+            self.model.centerX, self.model.centerY = self.hitbox.centerX, self.hitbox.centerY
+        
+        self.drawing = Group(self.hitbox, self.model)
+
+    def hasBeenCollected(self): 
+        self.clear()
+        if None in player.actions: 
+            player.actions.remove(None)
+        if self.itemType == 'dashItem': 
+            player.hasDash = True
+            player.actions.append('dash')
+        if self.itemType == 'swingItem': 
+            player.hasSwing = True
+            player.actions.append('swing')
+        if self.itemType == 'shootItem': 
+            player.hasShoot = True
+            player.actions.append('shoot')
+    
+    
+    def clear(self): 
+        self.drawing.clear()
 
 def onKeyHold(keys):     
     player.handleOnKeys(keys)
@@ -247,7 +305,6 @@ def onMouseDrag(x, y):
     game.room.cursorY = y
 def onMousePress(x, y): 
     player.handleMousePress(x, y)
-    print(player.canSwing)
 def onStep(): 
     player.handleOnStep() 
     game.room.handleOnStep() 

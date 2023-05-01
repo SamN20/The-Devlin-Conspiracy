@@ -4,4 +4,4 @@ left = 'a'
 right = 'd'
 actionIndexUp = 'e'
 actionIndexDown = 'q'
-
+collect = 'f'
