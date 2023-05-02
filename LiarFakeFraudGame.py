@@ -76,8 +76,6 @@ class Player(object):
         self.shootDelay = 180 - 30*self.shootMod
         self.shootCooldown = 0
 
-        self.coolDownTimerList = [self.swingCooldown, self.shootCooldown]
-    
     def draw(self, cx, cy, level): 
         self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'gainsboro', opacity = 50)
         self.body = Circle(cx, cy, 7, fill = 'white', border = 'black')
