@@ -49,7 +49,7 @@ class Player(object):
 
         self.dx = 0
         self.dy = 0
-        self.speed = 0.5 + 0.5*self.moveMod
+        self.speed = 1 + self.moveMod
         self.canMove = True
     
         self.actions = [None]
@@ -59,7 +59,7 @@ class Player(object):
         self.hasDash = False
         self.canDash = True
         self.dashDistance = 75 + 25*self.dashMod
-        self.dashSpeed = 1 + 0.25*self.dashMod
+        self.dashSpeed = 1.5 + 0.5*self.dashMod
         self.isDashing = False
         self.dashDelay = 240 - 30*self.dashMod
         self.dashCooldown = 0
@@ -116,8 +116,10 @@ class Player(object):
                 else:
                     angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY)
                     x, y = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, angle, self.dashSpeed)
-                    if game.room.walls.hits(x, y) == True: 
+                    if game.room.walls.hitsShape(self.hitbox) == True: 
                         self.isDashing = False
+                        self.dashCooldown = self.dashDelay
+                        self.canDash = False
                         self.dashRange.clear()
                     else:
                         self.moveTo(x, y)
@@ -129,13 +131,13 @@ class Player(object):
             self.swing.rotateAngle = angle
     
     def collision(self): 
-        if game.room.walls.hits(self.hitbox.right, self.hitbox.centerY) or self.hitbox.right > 400:      
+        if game.room.walls.hits(self.hitbox.right, self.hitbox.centerY) or self.hitbox.right > app._app.getRight():      
             self.drawing.centerX -= self.speed
         if game.room.walls.hits(self.hitbox.left, self.hitbox.centerY) or self.hitbox.left < 0:         
             self.drawing.centerX += self.speed
         if game.room.walls.hits(self.hitbox.centerX, self.hitbox.top) or self.hitbox.top < 0:           
             self.drawing.centerY += self.speed
-        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.bottom) or self.hitbox.bottom > 400:   
+        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.bottom) or self.hitbox.bottom > app._app.getBottom():   
             self.drawing.centerY -= self.speed
 
     def swingAttack(self): 
@@ -243,14 +245,14 @@ class Projectile(object):
 
     def move(self, type, modifier): 
         if type == 'basic' : 
-            self.nextX, self.nextY = getPointInDir(self.drawing.centerX, self.drawing.centerY, self.angle, 1.5 + modifier)
+            self.nextX, self.nextY = getPointInDir(self.drawing.centerX, self.drawing.centerY, self.angle, 2 + modifier)
             self.drawing.centerX = self.nextX
             self.drawing.centerY = self.nextY
     def clear(self): 
         self.loaded = False
         self.drawing.clear()
     def handleOnStep(self): 
-        if self.drawing.centerX > 410 or self.drawing.centerX < -10 or self.drawing.centerY > 410 or self.drawing.centerY < -10 : 
+        if self.drawing.centerX > 810 or self.drawing.centerX < -10 or self.drawing.centerY > 610 or self.drawing.centerY < -10 : 
             self.clear()
         if self.drawing.hitsShape(game.room.thingsWithCollision) == True : 
             self.clear()
