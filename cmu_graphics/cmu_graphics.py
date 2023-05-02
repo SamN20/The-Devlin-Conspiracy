@@ -678,7 +678,8 @@ class App(object):
 
     def updateScreen(self, newScreen):
         if newScreen:
-            self._screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
+            # self._screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
+            self._screen = pygame.display.set_mode((self.width, self.height))
         self._cairo_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, self.width, self.height)
         self._ctx = cairo.Context(self._cairo_surface)
 
