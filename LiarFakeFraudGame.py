@@ -131,13 +131,13 @@ class Player(object):
             self.swing.rotateAngle = angle
     
     def collision(self): 
-        if game.room.walls.hits(self.hitbox.right, self.hitbox.centerY) or self.hitbox.right > app._app.getRight():      
+        if game.room.walls.hits(self.hitbox.right, self.hitbox.centerY) :      
             self.drawing.centerX -= self.speed
-        if game.room.walls.hits(self.hitbox.left, self.hitbox.centerY) or self.hitbox.left < 0:         
+        if game.room.walls.hits(self.hitbox.left, self.hitbox.centerY) :         
             self.drawing.centerX += self.speed
-        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.top) or self.hitbox.top < 0:           
+        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.top) :           
             self.drawing.centerY += self.speed
-        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.bottom) or self.hitbox.bottom > app._app.getBottom():   
+        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.bottom) :   
             self.drawing.centerY -= self.speed
 
     def swingAttack(self): 
@@ -150,7 +150,7 @@ class Player(object):
         if self.attacking == True: 
             self.swing.opacity = 75
             finishAngle = self.sight.rotateAngle + 95
-            self.swing.rotateAngle += (1.5 + self.swingMod)
+            self.swing.rotateAngle += (3 + 1.5*self.swingMod)
             
             if self.swing.rotateAngle >= finishAngle:
                 self.attacking = False
@@ -169,7 +169,7 @@ class Player(object):
             
     def shootPhysics(self): 
         for bullet in self.bullets : 
-            bullet.move('basic', 0.25*self.shootMod)
+            bullet.move('basic', 0.5*self.shootMod)
             bullet.handleOnStep()
             if bullet.loaded == False : 
                 self.bullets.remove(bullet)
@@ -245,7 +245,7 @@ class Projectile(object):
 
     def move(self, type, modifier): 
         if type == 'basic' : 
-            self.nextX, self.nextY = getPointInDir(self.drawing.centerX, self.drawing.centerY, self.angle, 2 + modifier)
+            self.nextX, self.nextY = getPointInDir(self.drawing.centerX, self.drawing.centerY, self.angle, 3 + modifier)
             self.drawing.centerX = self.nextX
             self.drawing.centerY = self.nextY
     def clear(self): 
