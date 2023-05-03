@@ -1,5 +1,4 @@
 from cmu_graphics import * 
-import math
 
 class NPC(object):
     
@@ -34,12 +33,8 @@ class NPC(object):
         if rotationAngle < 3:
             # Stop rotating
             direction = 0
-            dx = player.body.centerX - self.drawing.centerX
-            dy = player.body.centerY - self.drawing.centerY
-            length = math.sqrt(dx**2 + dy**2)
-            if length != 0:
-                dx /= length
-                dy /= length
+            angle = angleTo(self.drawing.centerX, self.drawing.centerY, player.body.centerX, player.body.centerY)
+            dx, dy = getPointInDir(0, 0, angle, 1)
             self.dx = dx
             self.dy = dy
             self.move()
@@ -50,55 +45,50 @@ class NPC(object):
     def attemptMove(self, player, allNPCs):
         if self.followPlayer:
             self.sightLine(player)
-                
-            # No collision, update velocity and move towards player
-            dx = player.body.centerX - self.drawing.centerX
-            dy = player.body.centerY - self.drawing.centerY
-            length = math.sqrt(dx**2 + dy**2)
-            if length != 0:
-                self.dx = dx / length * self.speed
-                self.dy = dy / length * self.speed
-            else:
-                self.dx = 0
-                self.dy = 0
-            
-            # Move the NPC
-            # self.move()
-            self.move_away_from_npcs(allNPCs, player)
+            # self.move_away_from_npcs(allNPCs, player)
 
-    def move_away_from_npcs(self, allNPCs, player):
-        # Loop through all NPCs in the game
-        for NPC in allNPCs:
-            # Check if the NPC is not itself and if it's colliding with the current NPC
-            if NPC != self and self.hitbox.hitsShape(NPC.hitbox):
-                # Calculate the overlap between the two NPCs 
-                dx = min(self.hitbox.right, NPC.hitbox.right) - max(self.hitbox.left, NPC.hitbox.left)
-                dy = min(self.hitbox.bottom, NPC.hitbox.bottom) - max(self.hitbox.top, NPC.hitbox.top)
-                if dx > 0 and dy > 0:
-                    # There is an overlap, calculate the amount of overlap (math from Physics)
-                    overlapX = min(abs(dx), self.hitbox.width + NPC.hitbox.width - abs(dx))
-                    overlapY = min(abs(dy), self.hitbox.height + NPC.hitbox.height - abs(dy))
-                    overlap = min(overlapX, overlapY)
-                    if overlap > 0:
-                        # Calculate the direction between the two NPCs
-                        dx = self.drawing.centerX - NPC.drawing.centerX
-                        dy = self.drawing.centerY - NPC.drawing.centerY
-                        length = math.sqrt(dx**2 + dy**2)
-                        if length != 0:
-                            dx /= length
-                            dy /= length
+    # def move_away_from_npcs(self, allNPCs, player):
+    #     # Loop through all NPCs in the game
+    #     for NPC in allNPCs:
+    #         # Check if the NPC is not itself and if it's colliding with the current NPC
+    #         if NPC != self and self.hitbox.hitsShape(NPC.hitbox):
+    #             # Calculate the overlap between the two NPCs 
+    #             dx = min(self.hitbox.right, NPC.hitbox.right) - max(self.hitbox.left, NPC.hitbox.left)
+    #             dy = min(self.hitbox.bottom, NPC.hitbox.bottom) - max(self.hitbox.top, NPC.hitbox.top)
+    #             if dx > 0 and dy > 0:
+    #                 # There is an overlap, calculate the amount of overlap
+    #                 overlapX = min(abs(dx), self.hitbox.width + NPC.hitbox.width - abs(dx))
+    #                 overlapY = min(abs(dy), self.hitbox.height + NPC.hitbox.height - abs(dy))
+    #                 overlap = min(overlapX, overlapY)
+    #                 if overlap > 0:
+    #                     # Calculate the direction between the two NPCs
+    #                     dx = self.drawing.centerX - NPC.drawing.centerX
+    #                     dy = self.drawing.centerY - NPC.drawing.centerY
+    #                     length = math.sqrt(dx**2 + dy**2)
+    #                     if length != 0:
+    #                         dx /= length
+    #                         dy /= length
 
-                        # Move the two NPCs away from each other
-                        # We divide by 2 to ensure that they both move away from each other equally
-                        self.drawing.centerX += dx * overlap / 2
-                        self.drawing.centerY += dy * overlap / 2
-                        NPC.drawing.centerX -= dx * overlap / 2
-                        NPC.drawing.centerY -= dy * overlap / 2
-
+    #                     # Move the two NPCs away from each other
+    #                     # We divide by 2 to ensure that they both move away from each other equally
+    #                     self.drawing.centerX += dx * overlap / 2
+    #                     self.drawing.centerY += dy * overlap / 2
+    #                     NPC.drawing.centerX -= dx * overlap / 2
+    #                     NPC.drawing.centerY -= dy * overlap / 2
 
     def move(self):
         self.drawing.centerX += self.dx * self.speed
         self.drawing.centerY += self.dy * self.speed
+
+    def collision(self): 
+        if game.room.walls.hits(self.hitbox.right, self.hitbox.centerY) :      
+            self.drawing.centerX -= self.speed
+        if game.room.walls.hits(self.hitbox.left, self.hitbox.centerY) :         
+            self.drawing.centerX += self.speed
+        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.top) :           
+            self.drawing.centerY += self.speed
+        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.bottom) :   
+            self.drawing.centerY -= self.speed
 
     def draw(self, cx, cy, rotationAngle, sightDistance, colour):
         self.sight = Arc(cx, cy, sightDistance*10 + 50, sightDistance*10 + 50, -45, 90, fill = 'lightGrey', opacity = 50, rotateAngle = rotationAngle)
