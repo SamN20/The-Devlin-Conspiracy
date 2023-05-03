@@ -4,8 +4,8 @@ test = Sound("Sound_files\TestSounds\CantinaBand3.wav")
 
 def onMousePress(x,y):
     test.play(loop=True)
-    app._app._width = 1536
-    app._app._height = 864
+    app._app._width = 400
+    app._app._height = 400
     app._app.updateScreen(True)
 
 def onMouseDrag(x,y):

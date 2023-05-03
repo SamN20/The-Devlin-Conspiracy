@@ -33,7 +33,10 @@ class RoomState(object):
 
         self.items = [Item(200, 100, 'dashItem'), Item(250, 100, 'swingItem'), Item(300, 100, 'shootItem')]
 
-        self.cursor = Circle(0, 0, 10, border = 'red', fill = None) 
+        self.cursor = Circle(0, 0, 10, border = 'red', fill = None)
+
+        self.allNPCs = []
+
     def handleOnStep(self): 
         self.cursor.centerX = self.cursorX
         self.cursor.centerY = self.cursorY
@@ -49,7 +52,7 @@ class Player(object):
 
         self.dx = 0
         self.dy = 0
-        self.speed = 1 + self.moveMod
+        self.speed = 0.5 + 0.25*self.moveMod
         self.canMove = True
     
         self.actions = [None]
@@ -131,14 +134,17 @@ class Player(object):
             self.swing.rotateAngle = angle
     
     def collision(self): 
-        if game.room.walls.hits(self.hitbox.right, self.hitbox.centerY) :      
-            self.drawing.centerX -= self.speed
-        if game.room.walls.hits(self.hitbox.left, self.hitbox.centerY) :         
-            self.drawing.centerX += self.speed
-        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.top) :           
-            self.drawing.centerY += self.speed
-        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.bottom) :   
-            self.drawing.centerY -= self.speed
+        # Define the sides of the sprite as a list of tuples
+        sides = [(self.hitbox.right, self.hitbox.centerY, -self.speed, 0), # Right side
+                (self.hitbox.left, self.hitbox.centerY, self.speed, 0), # Left side
+                (self.hitbox.centerX, self.hitbox.top, 0, self.speed), # Top side
+                (self.hitbox.centerX, self.hitbox.bottom, 0, -self.speed)] # Bottom side
+        # Loop through each side and check for collision with the walls
+        for x, y, dx, dy in sides:
+            if game.room.walls.hits(x, y):
+                # Move the sprite away from the wall by the speed amount
+                self.drawing.centerX += dx
+                self.drawing.centerY += dy
 
     def swingAttack(self): 
         if self.canSwing == True and player.hasSwing == True:
@@ -234,7 +240,112 @@ class Player(object):
                 self.dashToX, self.dashToY = self.getDashDestination()
                 self.isDashing = True
                 self.dashRange = Group(Line(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY, fill = 'blue', opacity = 25))
-                
+
+class NPC(object):
+    
+    def __init__(self, cx, cy, rotationAngle, xpLevel, sightDistance, colour):
+        self.dx = 0
+        self.dy = 0
+        self.dr = 1
+        self.speed = 0.5 # Could change based on xpLevel
+        self.followPlayer = True
+
+        self.draw(cx, cy, rotationAngle, sightDistance, colour)
+        
+    def handleOnStep(self):
+        self.attemptMove()
+        self.collision()
+
+    def sightLine(self):
+        targetAngle = angleTo(self.drawing.centerX, self.drawing.centerY, player.body.centerX, player.body.centerY)
+
+        # Calculate the shortest rotation angle needed to reach the target angle
+        rotationAngle = (targetAngle - self.sight.rotateAngle) % 360
+
+        # Determine the direction of rotation needed to reach the target angle
+        if rotationAngle > 180:
+            # Rotate counterclockwise
+            direction = -1
+            rotationAngle = 360 - rotationAngle
+        else:
+            # Rotate clockwise
+            direction = 1
+
+        # Check if the rotation angle is within 3 degrees of the target angle
+        if rotationAngle < 3:
+            # Stop rotating
+            direction = 0
+            angle = angleTo(self.drawing.centerX, self.drawing.centerY, player.body.centerX, player.body.centerY)
+            dx, dy = getPointInDir(0, 0, angle, 1)
+            self.dx = dx
+            self.dy = dy
+            self.move()
+            
+        # Update the rotation angle based on the rotation direction
+        self.sight.rotateAngle = (self.sight.rotateAngle + direction * self.dr) % 360
+
+    def attemptMove(self):
+        if self.followPlayer:
+            self.sightLine()
+            # self.move_away_from_npcs(allNPCs, player)
+
+    def move_away_from_npcs(self):
+    #     # Loop through all NPCs in the game
+    #     for NPC in allNPCs:
+    #         # Check if the NPC is not itself and if it's colliding with the current NPC
+    #         if NPC != self and self.hitbox.hitsShape(NPC.hitbox):
+    #             # Calculate the overlap between the two NPCs 
+    #             dx = min(self.hitbox.right, NPC.hitbox.right) - max(self.hitbox.left, NPC.hitbox.left)
+    #             dy = min(self.hitbox.bottom, NPC.hitbox.bottom) - max(self.hitbox.top, NPC.hitbox.top)
+    #             if dx > 0 and dy > 0:
+    #                 # There is an overlap, calculate the amount of overlap
+    #                 overlapX = min(abs(dx), self.hitbox.width + NPC.hitbox.width - abs(dx))
+    #                 overlapY = min(abs(dy), self.hitbox.height + NPC.hitbox.height - abs(dy))
+    #                 overlap = min(overlapX, overlapY)
+    #                 if overlap > 0:
+    #                     # Calculate the direction between the two NPCs
+    #                     dx = self.drawing.centerX - NPC.drawing.centerX
+    #                     dy = self.drawing.centerY - NPC.drawing.centerY
+    #                     length = math.sqrt(dx**2 + dy**2)
+    #                     if length != 0:
+    #                         dx /= length
+    #                         dy /= length
+
+    #                     # Move the two NPCs away from each other
+    #                     # We divide by 2 to ensure that they both move away from each other equally
+    #                     self.drawing.centerX += dx * overlap / 2
+    #                     self.drawing.centerY += dy * overlap / 2
+    #                     NPC.drawing.centerX -= dx * overlap / 2
+                        # NPC.drawing.centerY -= dy * overlap / 2
+        pass
+
+    def move(self):
+        self.drawing.centerX += self.dx * self.speed
+        self.drawing.centerY += self.dy * self.speed
+
+    def collision(self):
+        # Define the sides of the sprite as a list of tuples
+        sides = [(self.hitbox.right, self.hitbox.centerY, -self.speed, 0), # Right side
+                (self.hitbox.left, self.hitbox.centerY, self.speed, 0), # Left side
+                (self.hitbox.centerX, self.hitbox.top, 0, self.speed), # Top side
+                (self.hitbox.centerX, self.hitbox.bottom, 0, -self.speed)] # Bottom side
+        # Loop through each side and check for collision with the walls
+        for x, y, dx, dy in sides:
+            if game.room.walls.hits(x, y):
+                # Move the sprite away from the wall by the speed amount
+                self.drawing.centerX += dx
+                self.drawing.centerY += dy
+            for NPC in game.room.allNPCs:
+                if NPC != self:
+                    if NPC.hitbox.hits(x,y):
+                        self.drawing.centerX += dx
+                        self.drawing.centerY += dy
+
+    def draw(self, cx, cy, rotationAngle, sightDistance, colour):
+        self.sight = Arc(cx, cy, sightDistance*10 + 50, sightDistance*10 + 50, -45, 90, fill = 'lightGrey', opacity = 50, rotateAngle = rotationAngle)
+        self.body = Circle(cx, cy, 7, fill = colour, border = 'black')
+        self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
+        self.drawing = Group(self.body, self.sight, self.hitbox)
 
 class Projectile(object): 
     def __init__(self, cx, cy, angle, colour):
@@ -310,6 +421,8 @@ def onMousePress(x, y):
 def onStep(): 
     player.handleOnStep() 
     game.room.handleOnStep() 
+    for enemy in game.room.allNPCs:
+        enemy.handleOnStep()
 
 def mapValue(value, valueMin, valueMax, targetMin, targetMax):
     ratio = (value-valueMin) / (valueMax-valueMin)
@@ -340,5 +453,9 @@ def orientation(x1, y1, x2, y2, type):
 
 game = GameState()
 player = Player(200, 300, 5)
+enemy1 = NPC(50, 50, 0, 5, 5, 'red')
+enemy2 = NPC(300, 300, 0, 5, 5, 'red')
+game.room.allNPCs.append(enemy1)
+game.room.allNPCs.append(enemy2)
 
 cmu_graphics.run()
