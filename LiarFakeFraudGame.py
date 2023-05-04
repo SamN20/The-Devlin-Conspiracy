@@ -5,14 +5,53 @@ app.stepsPerSecond = 120
 
 class GameState(object): 
     def __init__(self):
-        self.mode = 'TEST ROOM'
-        self.room = RoomState()
+        self.mode = 'TITLE SCREEN'
+        self.room = None 
 
         self.roomList = { }
         self.soundtrack = { }
         self.soundEffects = { }
 
-class RoomState(object): 
+        self.cover = Rect(0, 0, 400, 400, opacity = 0)
+
+        self.animating = False
+        self.startAnimationTimer = 0
+        self.animationComplete = False
+
+    def startGame(self): 
+        self.room = CurrentRoomState()
+        self.cover.opacity = 0
+        self.mode = 'TEST ROOM'
+        player.drawing.visible = True 
+
+    def beginStartingAnimation(self): 
+        self.animating = True
+
+    def animate(self): 
+        self.startAnimationTimer += 1
+        mValue = mapValue(1, 0, 480, 0, 100)
+        if self.startAnimationTimer <= 480 : 
+            if self.cover.opacity + mValue > 100: 
+                self.cover.opacity = 100
+            else: 
+                self.cover.opacity += mValue
+        else: 
+            self.animating = False
+            self.animationComplete = True
+
+    def handleOnStep(self): 
+        if self.animating == True : 
+            self.animate()
+        if self.animationComplete == True: 
+            self.startGame()
+        if self.cover.opacity > 100 : 
+            self.cover.opacity = 100
+
+    def handleMousePress(self): 
+        self.beginStartingAnimation()
+        
+
+class CurrentRoomState(object): 
     def __init__(self): 
         self.attributes = { 
             'difficulty' : 0, 
@@ -49,7 +88,7 @@ class Player(object):
 
         self.dx = 0
         self.dy = 0
-        self.speed = 1 + self.moveMod
+        self.speed = 0.5 + 0.25*self.moveMod
         self.canMove = True
     
         self.actions = [None]
@@ -82,9 +121,10 @@ class Player(object):
         self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'gainsboro', opacity = 50)
         self.body = Circle(cx, cy, 7, fill = 'white', border = 'black')
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
-        self.swing = Arc(cx, cy, 30*level, 30*level, -55, 10, fill = 'saddleBrown')
+        self.swing = Arc(cx, cy, 30*level, 30*level, -55, 10, fill = 'saddleBrown', opacity = 0)
         self.drawing = Group(self.sight, self.body, self.swing, self.hitbox)
-    
+        self.drawing.visible = False 
+        
     def movement(self, key): 
         controls = {
             Keybinds.up : [0, -self.speed], 
@@ -150,7 +190,7 @@ class Player(object):
         if self.attacking == True: 
             self.swing.opacity = 75
             finishAngle = self.sight.rotateAngle + 95
-            self.swing.rotateAngle += (3 + 1.5*self.swingMod)
+            self.swing.rotateAngle += (1.5 + .75*self.swingMod)
             
             if self.swing.rotateAngle >= finishAngle:
                 self.attacking = False
@@ -252,7 +292,7 @@ class Projectile(object):
         self.loaded = False
         self.drawing.clear()
     def handleOnStep(self): 
-        if self.drawing.centerX > 810 or self.drawing.centerX < -10 or self.drawing.centerY > 610 or self.drawing.centerY < -10 : 
+        if self.drawing.centerX > app._app.getRight() or self.drawing.centerX < 0 or self.drawing.centerY > app._app.getBottom() or self.drawing.centerY < 0 : 
             self.clear()
         if self.drawing.hitsShape(game.room.thingsWithCollision) == True : 
             self.clear()
@@ -296,21 +336,30 @@ class Item (object):
         self.drawing.clear()
 
 def onKeyHold(keys):     
-    player.handleOnKeys(keys)
+    if 'MENU' not in game.mode and game.room != None : # problem here
+        player.handleOnKeys(keys)
 def onKeyPress(key): 
-    player.handleKeyPress(key)
+    if 'MENU' not in game.mode and game.room != None : # problem here
+        player.handleKeyPress(key)
 def onMouseMove(x, y): 
-    game.room.cursorX = x
-    game.room.cursorY = y
+    if game.room != None : 
+        game.room.cursorX = x
+        game.room.cursorY = y
 def onMouseDrag(x, y): 
-    game.room.cursorX = x
-    game.room.cursorY = y
+    if game.room != None : 
+        game.room.cursorX = x
+        game.room.cursorY = y
 def onMousePress(x, y): 
-    player.handleMousePress(x, y)
+    if game.room != None : 
+        player.handleMousePress(x, y)
+    if game.mode == 'TITLE SCREEN': 
+        game.handleMousePress()
 def onStep(): 
-    player.handleOnStep() 
-    game.room.handleOnStep() 
-
+    if 'MENU' not in game.mode and game.room != None : 
+        player.handleOnStep() 
+        game.room.handleOnStep() 
+    if game.mode == 'TITLE SCREEN': 
+        game.handleOnStep()
 def mapValue(value, valueMin, valueMax, targetMin, targetMax):
     ratio = (value-valueMin) / (valueMax-valueMin)
     result = ratio * (targetMax-targetMin) + targetMin
