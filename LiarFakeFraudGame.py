@@ -336,10 +336,10 @@ class Item (object):
         self.drawing.clear()
 
 def onKeyHold(keys):     
-    if 'MENU' not in game.mode and game.room != None : # problem here
+    if 'MENU' not in game.mode and game.room != None : 
         player.handleOnKeys(keys)
 def onKeyPress(key): 
-    if 'MENU' not in game.mode and game.room != None : # problem here
+    if 'MENU' not in game.mode and game.room != None : 
         player.handleKeyPress(key)
 def onMouseMove(x, y): 
     if game.room != None : 
