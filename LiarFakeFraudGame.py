@@ -44,6 +44,10 @@ class RoomState(object):
         self.cursor.centerX = self.cursorX
         self.cursor.centerY = self.cursorY
 
+###################################
+###### START OF PLAYER CLASS ######
+###################################
+
 class Player(object): 
     def __init__(self, cx, cy, level): 
         self.draw(cx, cy, level)
@@ -244,22 +248,38 @@ class Player(object):
                 self.isDashing = True
                 self.dashRange = Group(Line(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY, fill = 'blue', opacity = 25))
 
+################################
+###### START OF NPC CLASS ######
+################################
+
 class NPC(object):
     
-    def __init__(self, cx, cy, rotationAngle, xpLevel, sightDistance, colour):
+    def __init__(self, cx, cy, rotationAngle, level, sightDistance, colour):
         self.dx = 0
         self.dy = 0
         self.dr = 1
-        self.speed = 0.5 # Could change based on xpLevel
+        self.speed = 0.5 # Could change based on level
         self.followPlayer = True
 
-        self.draw(cx, cy, rotationAngle, sightDistance, colour)
+        self.moveMod = 0 
+        self.shootMod = 0 
+        self.swingMod = 0
+        self.dashMod = 0 
+
+        self.hasSwing = True
+        self.canSwing = True 
+        self.attacking = False
+        self.swingDelay = 240 - 30*self.swingMod
+        self.swingCooldown = 0
+
+        self.draw(cx, cy, rotationAngle, sightDistance, colour, level)
         
-    def draw(self, cx, cy, rotationAngle, sightDistance, colour):
+    def draw(self, cx, cy, rotationAngle, sightDistance, colour, level):
         self.sight = Arc(cx, cy, sightDistance*10 + 50, sightDistance*10 + 50, -45, 90, fill = 'lightGrey', opacity = 50, rotateAngle = rotationAngle)
         self.body = Circle(cx, cy, 7, fill = colour, border = 'black')
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
-        self.drawing = Group(self.body, self.sight, self.hitbox)
+        self.swing = Arc(cx, cy, 30+5*level, 30+5*level, -55, 10, fill = 'saddleBrown')
+        self.drawing = Group(self.sight, self.hitbox, self.swing, self.body)
 
     def sightLine(self):
         targetAngle = angleTo(self.drawing.centerX, self.drawing.centerY, player.body.centerX, player.body.centerY)
@@ -285,12 +305,14 @@ class NPC(object):
             self.dx = dx
             self.dy = dy
             self.move()
-            
+
         # Update the rotation angle based on the rotation direction
-        self.sight.rotateAngle = (self.sight.rotateAngle + direction * self.dr) % 360
+        finalAngle = (self.sight.rotateAngle + direction * self.dr) % 360
+        self.sight.rotateAngle = finalAngle
+        self.swing.rotateAngle = finalAngle
 
     def attemptMove(self):
-        if self.followPlayer:
+        if self.followPlayer and self.attacking == False:
             self.sightLine()
 
     def move(self):
@@ -318,8 +340,12 @@ class NPC(object):
                 self.drawing.centerX += dx
                 self.drawing.centerY += dy
 
+    def attackLogic(self):
+        if self.sight.hitsShape(player.hitbox):
+            self.swingAttack()
+
     def swingAttack(self): 
-        if self.canSwing == True and player.hasSwing == True:
+        if self.canSwing == True and self.hasSwing == True:
             self.attacking = True 
             self.canSwing = False
             self.swingCooldown = self.swingDelay
@@ -334,34 +360,35 @@ class NPC(object):
                 self.attacking = False
                 self.swing.opacity = 0
                 self.swing.rotateAngle = self.sight.rotateAngle
-                
         else: 
             self.swing.opacity = 0 
+
+    def manageTimers(self): 
+        if self.swingCooldown != 0:
+           self.swingCooldown -= 1
+        # if self.shootCooldown != 0: # Not implemented yet (or ever)
+        #    self.shootCooldown -= 1
+        # if self.dashCooldown != 0: 
+        #     self.dashCooldown -= 1
+    def updatePlayer(self): 
+        if self.swingCooldown == 0: 
+            self.canSwing = True
+        # if self.shootCooldown == 0: # Not implemented yet (or ever)
+        #     self.canShoot = True 
+        # if self.dashCooldown == 0: 
+        #     self.canDash = True
 
     def handleOnStep(self):
         self.attemptMove()
         self.collision()
+        self.swingAttackAnimation()
+        self.updatePlayer()
+        self.manageTimers()
+        self.attackLogic()
 
-class Projectile(object): 
-    def __init__(self, cx, cy, angle, colour):
-        self.drawing = Group(Circle(cx, cy, 3, fill = colour))
-        self.moveX, self.moveY = getPointInDir(cx, cy, angle, 100)
-        self.angle = angle
-        self.loaded = True
-
-    def move(self, type, modifier): 
-        if type == 'basic' : 
-            self.nextX, self.nextY = getPointInDir(self.drawing.centerX, self.drawing.centerY, self.angle, 3 + modifier)
-            self.drawing.centerX = self.nextX
-            self.drawing.centerY = self.nextY
-    def clear(self): 
-        self.loaded = False
-        self.drawing.clear()
-    def handleOnStep(self): 
-        if self.drawing.centerX > 810 or self.drawing.centerX < -10 or self.drawing.centerY > 610 or self.drawing.centerY < -10 : 
-            self.clear()
-        if self.drawing.hitsShape(game.room.thingsWithCollision) == True : 
-            self.clear()
+##########################
+###### ITEM CLASSES ######
+##########################
 
 class Item (object): 
     def __init__(self, cx, cy, type): 
@@ -401,6 +428,31 @@ class Item (object):
     def clear(self): 
         self.drawing.clear()
 
+class Projectile(object): 
+    def __init__(self, cx, cy, angle, colour):
+        self.drawing = Group(Circle(cx, cy, 3, fill = colour))
+        self.moveX, self.moveY = getPointInDir(cx, cy, angle, 100)
+        self.angle = angle
+        self.loaded = True
+
+    def move(self, type, modifier): 
+        if type == 'basic' : 
+            self.nextX, self.nextY = getPointInDir(self.drawing.centerX, self.drawing.centerY, self.angle, 3 + modifier)
+            self.drawing.centerX = self.nextX
+            self.drawing.centerY = self.nextY
+    def clear(self): 
+        self.loaded = False
+        self.drawing.clear()
+    def handleOnStep(self): 
+        if self.drawing.centerX > 810 or self.drawing.centerX < -10 or self.drawing.centerY > 610 or self.drawing.centerY < -10 : 
+            self.clear()
+        if self.drawing.hitsShape(game.room.thingsWithCollision) == True : 
+            self.clear()
+
+###########################
+###### CMU FUNCTIONS ######
+###########################
+
 def onKeyHold(keys):     
     player.handleOnKeys(keys)
 def onKeyPress(key): 
@@ -424,7 +476,7 @@ def mapValue(value, valueMin, valueMax, targetMin, targetMax):
     result = ratio * (targetMax-targetMin) + targetMin
     return result
 
-def orientation(x1, y1, x2, y2, type): 
+def orientation(x1, y1, x2, y2, type): # Not realy used... sorry Jonah
     angle = rounded(angleTo(x1, y1, x2, y2))
     if type == 'diagonal' : 
         if angle >= 0 and angle < 90: 
@@ -448,9 +500,9 @@ def orientation(x1, y1, x2, y2, type):
 
 game = GameState()
 player = Player(200, 300, 5)
-enemy1 = NPC(50, 50, 0, 5, 5, 'red')
+# enemy1 = NPC(50, 50, 0, 5, 5, 'red')
 enemy2 = NPC(300, 300, 0, 5, 5, 'red')
-game.room.allNPCs.append(enemy1)
+# game.room.allNPCs.append(enemy1)
 game.room.allNPCs.append(enemy2)
 
 cmu_graphics.run()
