@@ -6,9 +6,12 @@ app.stepsPerSecond = 120
 class GameState(object): 
     def __init__(self):
         self.mode = 'TITLE SCREEN'
-        self.room = None 
+        self.currentRoom = None 
 
-        self.roomList = { }
+        self.worldList = ['tutorial']
+        self.worldListIndex = 0 
+        self.roomList = {'tutorial': ['Tutorial', 0,  ],  # worldName : [ Display Name, intended Progression ID, room1 (class), room2, etc...]
+                         } 
         self.soundtrack = { }
         self.soundEffects = { }
 
@@ -17,11 +20,15 @@ class GameState(object):
         self.animating = False
         self.startAnimationTimer = 0
         self.animationComplete = False
+        self.cursor = Circle(0, 0, 10, border = 'red', fill = None) 
+
+        self.cursorX = 200
+        self.cursorY = 200
 
     def startGame(self): 
-        self.room = CurrentRoomState()
+        self.currentRoom = CurrentRoomState()
         self.cover.opacity = 0
-        self.mode = 'TEST ROOM'
+        self.mode = 'PLAYING'
         player.drawing.visible = True 
 
     def beginStartingAnimation(self): 
@@ -40,6 +47,9 @@ class GameState(object):
             self.animationComplete = True
 
     def handleOnStep(self): 
+        self.cursor.centerX = self.cursorX
+        self.cursor.centerY = self.cursorY
+        
         if self.animating == True : 
             self.animate()
         if self.animationComplete == True: 
@@ -49,12 +59,13 @@ class GameState(object):
 
     def handleMousePress(self): 
         self.beginStartingAnimation()
+    def handleMouseMove(self, x, y): 
+        self.cursorX = x 
+        self.cursorY = y
         
-
 class CurrentRoomState(object): 
     def __init__(self): 
         self.attributes = { 
-            'difficulty' : 0, 
             'lightLevel' : 0,
             'slippery' : False, 
             'hasBoss' : False, 
@@ -66,18 +77,16 @@ class CurrentRoomState(object):
         self.walls = Group(Rect(100, 100, 10, 100))
         self.thingsWithCollision = Group(self.walls)
         
-        self.cursorX = 200
-        self.cursorY = 200
-        self.roomID = 1 # roomID of 0 is for menus, 1 for test map
+        self.world = game.roomList[game.worldList[game.worldListIndex]]
+        self.roomID = game.roomList[game.worldList] # fix problem here
+        self.room = TestRoom()
 
         self.items = [Item(200, 100, 'dashItem'), Item(250, 100, 'swingItem'), Item(300, 100, 'shootItem')]
 
-        self.cursor = Circle(0, 0, 10, border = 'red', fill = None) 
     def handleOnStep(self): 
-        self.cursor.centerX = self.cursorX
-        self.cursor.centerY = self.cursorY
+        pass
 
-class Player(object): 
+class Player (object): 
     def __init__(self, cx, cy, level): 
         self.draw(cx, cy, level)
         
@@ -156,7 +165,7 @@ class Player(object):
                 else:
                     angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY)
                     x, y = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, angle, self.dashSpeed)
-                    if game.room.walls.hitsShape(self.hitbox) == True: 
+                    if game.currentRoom.walls.hitsShape(self.hitbox) == True: 
                         self.isDashing = False
                         self.dashCooldown = self.dashDelay
                         self.canDash = False
@@ -171,13 +180,13 @@ class Player(object):
             self.swing.rotateAngle = angle
     
     def collision(self): 
-        if game.room.walls.hits(self.hitbox.right, self.hitbox.centerY) :      
+        if game.currentRoom.walls.hits(self.hitbox.right, self.hitbox.centerY) :      
             self.drawing.centerX -= self.speed
-        if game.room.walls.hits(self.hitbox.left, self.hitbox.centerY) :         
+        if game.currentRoom.walls.hits(self.hitbox.left, self.hitbox.centerY) :         
             self.drawing.centerX += self.speed
-        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.top) :           
+        if game.currentRoom.walls.hits(self.hitbox.centerX, self.hitbox.top) :           
             self.drawing.centerY += self.speed
-        if game.room.walls.hits(self.hitbox.centerX, self.hitbox.bottom) :   
+        if game.currentRoom.walls.hits(self.hitbox.centerX, self.hitbox.bottom) :   
             self.drawing.centerY -= self.speed
 
     def swingAttack(self): 
@@ -230,7 +239,7 @@ class Player(object):
             self.canDash = True
 
     def collect(self): 
-        for item in game.room.items: 
+        for item in game.currentRoom.items: 
             if distance(self.hitbox.centerX, self.hitbox.centerY, item.hitbox.centerX, item.hitbox.centerY) < 30: 
                 item.hasBeenCollected()
 
@@ -253,7 +262,7 @@ class Player(object):
         if key == Keybinds.collect: 
             self.collect()
     def handleOnStep(self): 
-        self.lookRotation(game.room.cursorX, game.room.cursorY)
+        self.lookRotation(game.cursorX, game.cursorY)
         self.collision()
         self.attackSwing()
         self.shootPhysics()
@@ -262,7 +271,7 @@ class Player(object):
         self.currentAction = self.actions[self.currentActionIndex]
         self.manageTimers()
     def handleMousePress(self, x, y): 
-        if game.room.roomID != 0 : 
+        if game.currentRoom.roomID != 0 : 
             if self.currentAction == 'swing': 
                 self.swingAttack()
                 
@@ -275,8 +284,7 @@ class Player(object):
                 self.isDashing = True
                 self.dashRange = Group(Line(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY, fill = 'blue', opacity = 25))
                 
-
-class Projectile(object): 
+class Projectile (object): 
     def __init__(self, cx, cy, angle, colour):
         self.drawing = Group(Circle(cx, cy, 3, fill = colour))
         self.moveX, self.moveY = getPointInDir(cx, cy, angle, 100)
@@ -294,7 +302,7 @@ class Projectile(object):
     def handleOnStep(self): 
         if self.drawing.centerX > app._app.getRight() or self.drawing.centerX < 0 or self.drawing.centerY > app._app.getBottom() or self.drawing.centerY < 0 : 
             self.clear()
-        if self.drawing.hitsShape(game.room.thingsWithCollision) == True : 
+        if self.drawing.hitsShape(game.currentRoom.thingsWithCollision) == True : 
             self.clear()
 
 class Item (object): 
@@ -335,29 +343,47 @@ class Item (object):
     def clear(self): 
         self.drawing.clear()
 
+class TestRoom (object): 
+    def __init__(self):
+        self.attributes = { 
+            'lightLevel' : 0,
+            'slippery' : False, 
+            'hasBoss' : False, 
+            'hasEnemies' : True, 
+            'hasCollectibles' : True, 
+            'checkpoint' : False, 
+            'savepoint' : False, 
+        } 
+    def loadRoomValues(self): 
+        for i in self.attributes : 
+            game.currentRoom.attributes[i] = self.attributes[i]
+            print(game.currentRoom.attributes)
+
 def onKeyHold(keys):     
-    if 'MENU' not in game.mode and game.room != None : 
+    if 'MENU' not in game.mode and game.currentRoom != None : 
         player.handleOnKeys(keys)
 def onKeyPress(key): 
-    if 'MENU' not in game.mode and game.room != None : 
+    if 'MENU' not in game.mode and game.currentRoom != None : 
         player.handleKeyPress(key)
+    if key == 'l': 
+        game.currentRoom.room.loadRoomValues()
 def onMouseMove(x, y): 
-    if game.room != None : 
-        game.room.cursorX = x
-        game.room.cursorY = y
+    if game.currentRoom != None : 
+        game.currentRoom.cursorX = x
+        game.currentRoom.cursorY = y
 def onMouseDrag(x, y): 
-    if game.room != None : 
-        game.room.cursorX = x
-        game.room.cursorY = y
+    if game.currentRoom != None : 
+        game.currentRoom.cursorX = x
+        game.currentRoom.cursorY = y
 def onMousePress(x, y): 
-    if game.room != None : 
+    if game.currentRoom != None : 
         player.handleMousePress(x, y)
     if game.mode == 'TITLE SCREEN': 
         game.handleMousePress()
 def onStep(): 
-    if 'MENU' not in game.mode and game.room != None : 
+    if 'MENU' not in game.mode and game.currentRoom != None : 
         player.handleOnStep() 
-        game.room.handleOnStep() 
+        game.currentRoom.handleOnStep() 
     if game.mode == 'TITLE SCREEN': 
         game.handleOnStep()
 def mapValue(value, valueMin, valueMax, targetMin, targetMax):
