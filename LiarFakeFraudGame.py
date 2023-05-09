@@ -27,14 +27,15 @@ class RoomState(object):
         self.walls = Group(Rect(100, 100, 10, 100))
         self.thingsWithCollision = Group(self.walls)
 
-                                    # [[thing, damageAmmount],[thing2, damageAmmount2]]
-        self.thingsThatDamagePlayer = [[]]
-        
+                                    # [[thing to hit test, damageAmmount, class (used to clear thing)]]
+        self.thingsThatDamagePlayer = []
+        self.thingsThatDamageNPCs   = []
+
         self.cursorX = 200
         self.cursorY = 200
         self.roomID = 1 # roomID of 0 is for menus, 1 for test map
 
-        self.items = [Item(200, 100, 'dashItem'), Item(250, 100, 'swingItem'), Item(300, 100, 'shootItem')]
+        self.items = [Item(200, 100, 'dashItem'), Item(250, 100, 'swingItem'), Item(300, 100, 'shootItem'), Item(200, 200, 'shootItem')]
 
         self.cursor = Circle(0, 0, 10, border = 'red', fill = None)
 
@@ -79,6 +80,8 @@ class Player(object):
         self.attacking = False
         self.swingDelay = 240 - 30*self.swingMod
         self.swingCooldown = 0
+        game.room.thingsThatDamageNPCs.append([self.swing, 4, None])
+        self.swing
         
         self.hasShoot = False
         self.canShoot = True
@@ -177,6 +180,7 @@ class Player(object):
         if self.canShoot == True: 
             bullet = Projectile(self.hitbox.centerX, self.hitbox.centerY, self.sight.rotateAngle, 'red')
             self.bullets.append(bullet)
+            game.room.thingsThatDamageNPCs.append([bullet.drawing, 2, bullet])
             self.shootCooldown = self.shootDelay
             self.canShoot = False
             
@@ -261,10 +265,14 @@ class NPC(object):
         self.speed = 0.5 # Could change based on level
         self.followPlayer = True
 
+        self.health = 4 + level*4
+
         self.moveMod = 0 
         self.shootMod = 0 
         self.swingMod = 0
         self.dashMod = 0 
+
+        self.justTookDamageLastCycle = False
 
         self.hasSwing = True
         self.canSwing = True 
@@ -340,6 +348,16 @@ class NPC(object):
                 self.drawing.centerX += dx
                 self.drawing.centerY += dy
 
+    def takesDamage(self):
+        for hurtyItem in game.room.thingsThatDamageNPCs:
+            if self.hitbox.hitsShape(hurtyItem[0]) and hurtyItem[0].opacity != 0:
+                if self.justTookDamageLastCycle == False:
+                    self.justTookDamageLastCycle = True
+                    if hurtyItem[2] != None:
+                        hurtyItem[2].clear()
+            else:
+                self.justTookDamageLastCycle = False
+
     def attackLogic(self):
         if self.sight.hitsShape(player.hitbox):
             self.swingAttack()
@@ -381,6 +399,7 @@ class NPC(object):
     def handleOnStep(self):
         self.attemptMove()
         self.collision()
+        self.takesDamage()
         self.swingAttackAnimation()
         self.updatePlayer()
         self.manageTimers()
@@ -443,6 +462,14 @@ class Projectile(object):
     def clear(self): 
         self.loaded = False
         self.drawing.clear()
+        tempList = []
+        for sublist in game.room.thingsThatDamageNPCs:
+            if self not in sublist:
+                tempList.append(sublist)
+        if self in [item for sublist in game.room.thingsThatDamageNPCs for item in sublist]:
+            game.room.thingsThatDamageNPCs = tempList
+        if self in [item for sublist in game.room.thingsThatDamagePlayer for item in sublist]:
+            game.room.thingsThatDamagePlayer = tempList
     def handleOnStep(self): 
         if self.drawing.centerX > 810 or self.drawing.centerX < -10 or self.drawing.centerY > 610 or self.drawing.centerY < -10 : 
             self.clear()
@@ -500,9 +527,9 @@ def orientation(x1, y1, x2, y2, type): # Not realy used... sorry Jonah
 
 game = GameState()
 player = Player(200, 300, 5)
-# enemy1 = NPC(50, 50, 0, 5, 5, 'red')
+enemy1 = NPC(50, 50, 0, 5, 5, 'red')
 enemy2 = NPC(300, 300, 0, 5, 5, 'red')
-# game.room.allNPCs.append(enemy1)
+game.room.allNPCs.append(enemy1)
 game.room.allNPCs.append(enemy2)
 
 cmu_graphics.run()
