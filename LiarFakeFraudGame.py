@@ -1,5 +1,6 @@
 from cmu_graphics import * 
 import Keybinds
+import Sounds
 
 app.stepsPerSecond = 120
 
@@ -7,14 +8,14 @@ class GameState(object):
     def __init__(self):
         self.mode = 'TITLE SCREEN'
         self.currentRoom = None 
+        self.animations = AnimationManager()
 
         self.worldList = ['tutorial']
         self.worldListIndex = 0 
         self.roomList = {'tutorial': ['Tutorial', 0,  ],  # worldName : [ Display Name, intended Progression ID, room1 (class), room2, etc...]
                          } 
-        self.soundtrack = { }
-        self.soundEffects = { }
-
+        self.roomListIndex = 2
+        
         self.cover = Rect(0, 0, 400, 400, opacity = 0)
 
         self.animating = False
@@ -25,11 +26,16 @@ class GameState(object):
         self.cursorX = 200
         self.cursorY = 200
 
+        Sounds.Titlescreen.play(loop = True)
+
     def startGame(self): 
+        self.animationComplete = False
         self.currentRoom = CurrentRoomState()
         self.cover.opacity = 0
         self.mode = 'PLAYING'
         player.drawing.visible = True 
+        Sounds.Titlescreen.pause()
+        
 
     def beginStartingAnimation(self): 
         self.animating = True
@@ -54,9 +60,7 @@ class GameState(object):
             self.animate()
         if self.animationComplete == True: 
             self.startGame()
-        if self.cover.opacity > 100 : 
-            self.cover.opacity = 100
-
+        
     def handleMousePress(self): 
         self.beginStartingAnimation()
     def handleMouseMove(self, x, y): 
@@ -78,10 +82,10 @@ class CurrentRoomState(object):
         self.thingsWithCollision = Group(self.walls)
         
         self.world = game.roomList[game.worldList[game.worldListIndex]]
-        self.roomID = game.roomList[game.worldList] # fix problem here
-        self.room = TestRoom()
+        self.room = TutorialRoom1()
+        self.roomID = self.room.roomID
 
-        self.items = [Item(200, 100, 'dashItem'), Item(250, 100, 'swingItem'), Item(300, 100, 'shootItem')]
+        self.items = [ ]
 
     def handleOnStep(self): 
         pass
@@ -343,10 +347,14 @@ class Item (object):
     def clear(self): 
         self.drawing.clear()
 
+class AnimationManager (object): 
+    def __init__(self): 
+        pass 
+
 class TestRoom (object): 
     def __init__(self):
         self.attributes = { 
-            'lightLevel' : 0,
+            'lightLevel' : 10,
             'slippery' : False, 
             'hasBoss' : False, 
             'hasEnemies' : True, 
@@ -354,10 +362,38 @@ class TestRoom (object):
             'checkpoint' : False, 
             'savepoint' : False, 
         } 
-    def loadRoomValues(self): 
+        self.roomID = 'testRoom'
+    def load(self): 
         for i in self.attributes : 
             game.currentRoom.attributes[i] = self.attributes[i]
-            print(game.currentRoom.attributes)
+
+class TutorialRoom1 (object): 
+    def __init__(self): 
+        self.attributes = { 
+            'lightLevel' : 10,
+            'slippery' : False, 
+            'hasBoss' : False, 
+            'hasEnemies' : False, 
+            'hasCollectibles' : False, 
+            'checkpoint' : False, 
+            'savepoint' : False, 
+        } 
+        self.walls = Group()
+        self.roomID = 'tutorialRoom1'
+        #self.exits = {'TOP' : }
+
+    def load(self): 
+        self.walls.add(buildWall(0, 0, 400, 'horizontal'), buildWall(0, 0, 400, 'vertical'), 
+                       buildWall(0, 390, 400, 'horizontal'), buildWall(390, 0, 400, 'vertical'))
+        game.currentRoom.walls.clear()
+        game.currentRoom.walls = self.walls
+        for i in self.attributes : 
+            game.currentRoom.attributes[i] = self.attributes[i]
+    
+class TutorialRoom2 (TutorialRoom1): 
+    #super().__init__() 
+    #super().attributes[]
+    pass
 
 def onKeyHold(keys):     
     if 'MENU' not in game.mode and game.currentRoom != None : 
@@ -366,15 +402,11 @@ def onKeyPress(key):
     if 'MENU' not in game.mode and game.currentRoom != None : 
         player.handleKeyPress(key)
     if key == 'l': 
-        game.currentRoom.room.loadRoomValues()
+        game.currentRoom.room.load()
 def onMouseMove(x, y): 
-    if game.currentRoom != None : 
-        game.currentRoom.cursorX = x
-        game.currentRoom.cursorY = y
+    game.handleMouseMove(x, y)
 def onMouseDrag(x, y): 
-    if game.currentRoom != None : 
-        game.currentRoom.cursorX = x
-        game.currentRoom.cursorY = y
+    game.handleMouseMove(x, y)
 def onMousePress(x, y): 
     if game.currentRoom != None : 
         player.handleMousePress(x, y)
@@ -384,13 +416,12 @@ def onStep():
     if 'MENU' not in game.mode and game.currentRoom != None : 
         player.handleOnStep() 
         game.currentRoom.handleOnStep() 
-    if game.mode == 'TITLE SCREEN': 
-        game.handleOnStep()
+    game.handleOnStep()
+
 def mapValue(value, valueMin, valueMax, targetMin, targetMax):
     ratio = (value-valueMin) / (valueMax-valueMin)
     result = ratio * (targetMax-targetMin) + targetMin
     return result
-
 def orientation(x1, y1, x2, y2, type): 
     angle = rounded(angleTo(x1, y1, x2, y2))
     if type == 'diagonal' : 
@@ -412,7 +443,12 @@ def orientation(x1, y1, x2, y2, type):
             return 'above'
         if (angle >= 90 and angle < 180) or (angle >= 180 and angle < 270): 
             return 'below'
-
+def buildWall(x, y, size, type): 
+    if type == 'horizontal': 
+        wall = Rect(x, y, size, 10)
+    if type == 'vertical': 
+        wall = Rect(x, y, 10, size)
+    return wall
 game = GameState()
 player = Player(200, 300, 5)
 
