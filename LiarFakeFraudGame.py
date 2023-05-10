@@ -2,6 +2,7 @@ from cmu_graphics import *
 import Keybinds
 
 app.stepsPerSecond = 120
+app.steps = 0
 
 class GameState(object): 
     def __init__(self):
@@ -35,7 +36,7 @@ class RoomState(object):
         self.cursorY = 200
         self.roomID = 1 # roomID of 0 is for menus, 1 for test map
 
-        self.items = [Item(200, 100, 'dashItem'), Item(250, 100, 'swingItem'), Item(300, 100, 'shootItem'), Item(200, 200, 'shootItem')]
+        self.items = [Item(200, 100, 'dashItem'), Item(250, 100, 'swingItem'), Item(300, 100, 'shootItem')]
 
         self.cursor = Circle(0, 0, 10, border = 'red', fill = None)
 
@@ -265,7 +266,8 @@ class NPC(object):
         self.speed = 0.5 # Could change based on level
         self.followPlayer = True
 
-        self.health = 4 + level*4
+        self.maxHealth = 4 + level*4
+        self.health = self.maxHealth
 
         self.moveMod = 0 
         self.shootMod = 0 
@@ -274,7 +276,7 @@ class NPC(object):
 
         self.justTookDamageLastCycle = False
 
-        self.hasSwing = True
+        self.hasSwing = False
         self.canSwing = True 
         self.attacking = False
         self.swingDelay = 240 - 30*self.swingMod
@@ -286,7 +288,7 @@ class NPC(object):
         self.sight = Arc(cx, cy, sightDistance*10 + 50, sightDistance*10 + 50, -45, 90, fill = 'lightGrey', opacity = 50, rotateAngle = rotationAngle)
         self.body = Circle(cx, cy, 7, fill = colour, border = 'black')
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
-        self.swing = Arc(cx, cy, 30+5*level, 30+5*level, -55, 10, fill = 'saddleBrown')
+        self.swing = Arc(cx, cy, 40+10*level, 40+10*level, -55, 10, fill = 'saddleBrown')
         self.drawing = Group(self.sight, self.hitbox, self.swing, self.body)
 
     def sightLine(self):
@@ -305,7 +307,7 @@ class NPC(object):
             direction = 1
 
         # Check if the rotation angle is within 3 degrees of the target angle
-        if rotationAngle < 3:
+        if rotationAngle < 6:
             # Stop rotating
             direction = 0
             angle = angleTo(self.drawing.centerX, self.drawing.centerY, player.body.centerX, player.body.centerY)
@@ -349,9 +351,11 @@ class NPC(object):
                 self.drawing.centerY += dy
 
     def takesDamage(self):
-        for hurtyItem in game.room.thingsThatDamageNPCs:
-            if self.hitbox.hitsShape(hurtyItem[0]) and hurtyItem[0].opacity != 0:
+        for hurtyItem in [item for item in game.room.thingsThatDamageNPCs if item[0].opacity != 0]:
+            if self.hitbox.hitsShape(hurtyItem[0]):
                 if self.justTookDamageLastCycle == False:
+                    self.health -= hurtyItem[1]
+                    print(self.health)
                     self.justTookDamageLastCycle = True
                     if hurtyItem[2] != None:
                         hurtyItem[2].clear()
@@ -389,6 +393,8 @@ class NPC(object):
         # if self.dashCooldown != 0: 
         #     self.dashCooldown -= 1
     def updatePlayer(self): 
+        if self.health <= 0:
+            self.die()
         if self.swingCooldown == 0: 
             self.canSwing = True
         # if self.shootCooldown == 0: # Not implemented yet (or ever)
@@ -396,14 +402,26 @@ class NPC(object):
         # if self.dashCooldown == 0: 
         #     self.canDash = True
 
+    def die(self):
+        # Can add a death sound ext here
+        self.clear()
+
+    def clear(self):
+        game.room.allNPCs.remove(self)
+        self.drawing.clear()
+
     def handleOnStep(self):
         self.attemptMove()
         self.collision()
         self.takesDamage()
-        self.swingAttackAnimation()
+        if self.attacking == True:
+            self.swingAttackAnimation()
+        else:
+            self.swing.opacity = 0 
         self.updatePlayer()
         self.manageTimers()
-        self.attackLogic()
+        if self.sight.hitsShape(player.hitbox):
+            self.swingAttack()
 
 ##########################
 ###### ITEM CLASSES ######
@@ -493,8 +511,10 @@ def onMouseDrag(x, y):
 def onMousePress(x, y): 
     player.handleMousePress(x, y)
 def onStep(): 
+    app.steps += 1
     player.handleOnStep() 
-    game.room.handleOnStep() 
+    game.room.handleOnStep()
+    # if app.steps % 2 == 0:
     for enemy in game.room.allNPCs:
         enemy.handleOnStep()
 
@@ -527,9 +547,14 @@ def orientation(x1, y1, x2, y2, type): # Not realy used... sorry Jonah
 
 game = GameState()
 player = Player(200, 300, 5)
-enemy1 = NPC(50, 50, 0, 5, 5, 'red')
-enemy2 = NPC(300, 300, 0, 5, 5, 'red')
-game.room.allNPCs.append(enemy1)
-game.room.allNPCs.append(enemy2)
+# enemy1 = NPC(50, 50, 0, 0, 5, 'red')
+# enemy2 = NPC(300, 300, 0, 1, 5, 'red')
+# enemy2.hasSwing = True
+# game.room.allNPCs.append(enemy1)
+# game.room.allNPCs.append(enemy2)
+
+for i in range(2):
+    e = NPC(10+i*50, 10+i*50, 0, 0, 5, 'red')
+    game.room.allNPCs.append(e)
 
 cmu_graphics.run()
