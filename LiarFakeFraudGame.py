@@ -26,7 +26,11 @@ class RoomState(object):
         } 
         self.walls = Group(Rect(100, 100, 10, 100))
         self.thingsWithCollision = Group(self.walls)
-        
+
+                                    # [[thing to hit test, damageAmmount, class (used to clear thing)]]
+        self.thingsThatDamagePlayer = []
+        self.thingsThatDamageNPCs   = []
+
         self.cursorX = 200
         self.cursorY = 200
         self.roomID = 1 # roomID of 0 is for menus, 1 for test map
@@ -40,6 +44,10 @@ class RoomState(object):
     def handleOnStep(self): 
         self.cursor.centerX = self.cursorX
         self.cursor.centerY = self.cursorY
+
+###################################
+###### START OF PLAYER CLASS ######
+###################################
 
 class Player(object): 
     def __init__(self, cx, cy, level): 
@@ -55,6 +63,9 @@ class Player(object):
         self.speed = 0.5 + 0.25*self.moveMod
         self.canMove = True
     
+        self.maxHealth = 4 + level*4
+        self.health = self.maxHealth
+
         self.actions = [None]
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
@@ -72,6 +83,8 @@ class Player(object):
         self.attacking = False
         self.swingDelay = 240 - 30*self.swingMod
         self.swingCooldown = 0
+        game.room.thingsThatDamageNPCs.append([self.swing, 4, None])
+        self.swing
         
         self.hasShoot = False
         self.canShoot = True
@@ -134,17 +147,29 @@ class Player(object):
             self.swing.rotateAngle = angle
     
     def collision(self): 
-        # Define the sides of the sprite as a list of tuples
+        # Define the sides of the player as a list
         sides = [(self.hitbox.right, self.hitbox.centerY, -self.speed, 0), # Right side
                 (self.hitbox.left, self.hitbox.centerY, self.speed, 0), # Left side
                 (self.hitbox.centerX, self.hitbox.top, 0, self.speed), # Top side
                 (self.hitbox.centerX, self.hitbox.bottom, 0, -self.speed)] # Bottom side
         # Loop through each side and check for collision with the walls
         for x, y, dx, dy in sides:
-            if game.room.walls.hits(x, y):
-                # Move the sprite away from the wall by the speed amount
+            if game.room.thingsWithCollision.hits(x, y):
+                # Move the player away from the wall by the speed amount
                 self.drawing.centerX += dx
                 self.drawing.centerY += dy
+
+    def takesDamage(self):
+            for hurtyItem in [item for item in game.room.thingsThatDamagePlayer if item[0].opacity != 0]:
+                if self.hitbox.hitsShape(hurtyItem[0]):
+                    if self.justTookDamageLastCycle == False:
+                        self.health -= hurtyItem[1]
+                        print(self.health)
+                        self.justTookDamageLastCycle = True
+                        if hurtyItem[2] != None:
+                            hurtyItem[2].clear()
+                else:
+                    self.justTookDamageLastCycle = False
 
     def swingAttack(self): 
         if self.canSwing == True and player.hasSwing == True:
@@ -152,7 +177,7 @@ class Player(object):
             self.canSwing = False
             self.swingCooldown = self.swingDelay
     
-    def attackSwing(self): 
+    def swingAttackAnimation(self): 
         if self.attacking == True: 
             self.swing.opacity = 75
             finishAngle = self.sight.rotateAngle + 95
@@ -170,6 +195,7 @@ class Player(object):
         if self.canShoot == True: 
             bullet = Projectile(self.hitbox.centerX, self.hitbox.centerY, self.sight.rotateAngle, 'red')
             self.bullets.append(bullet)
+            game.room.thingsThatDamageNPCs.append([bullet.drawing, 2, bullet])
             self.shootCooldown = self.shootDelay
             self.canShoot = False
             
@@ -188,6 +214,8 @@ class Player(object):
         if self.dashCooldown != 0: 
             self.dashCooldown -= 1
     def updatePlayer(self): 
+        if self.health <= 0:
+            self.die()
         if self.shootCooldown == 0: 
             self.canShoot = True 
         if self.swingCooldown == 0: 
@@ -199,6 +227,10 @@ class Player(object):
         for item in game.room.items: 
             if distance(self.hitbox.centerX, self.hitbox.centerY, item.hitbox.centerX, item.hitbox.centerY) < 30: 
                 item.hasBeenCollected()
+
+    def die(self):
+        # Not sure what we want to happen when the player is dead
+        print('player is dead')
 
     def handleActionIndex(self, key): 
         if key == Keybinds.actionIndexDown : 
@@ -221,7 +253,8 @@ class Player(object):
     def handleOnStep(self): 
         self.lookRotation(game.room.cursorX, game.room.cursorY)
         self.collision()
-        self.attackSwing()
+        self.takesDamage()
+        self.swingAttackAnimation()
         self.shootPhysics()
         self.dash()
         self.updatePlayer()
@@ -241,20 +274,44 @@ class Player(object):
                 self.isDashing = True
                 self.dashRange = Group(Line(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY, fill = 'blue', opacity = 25))
 
+################################
+###### START OF NPC CLASS ######
+################################
+
 class NPC(object):
     
-    def __init__(self, cx, cy, rotationAngle, xpLevel, sightDistance, colour):
+    def __init__(self, cx, cy, rotationAngle, level, sightDistance, colour):
+        self.draw(cx, cy, rotationAngle, sightDistance, colour, level)
+        
         self.dx = 0
         self.dy = 0
         self.dr = 1
-        self.speed = 0.5 # Could change based on xpLevel
+        self.speed = 0.5 # Could change based on level
         self.followPlayer = True
 
-        self.draw(cx, cy, rotationAngle, sightDistance, colour)
+        self.maxHealth = 4 + level*4
+        self.health = self.maxHealth
+
+        self.moveMod = 0 
+        self.shootMod = 0 
+        self.swingMod = 0
+        self.dashMod = 0 
+
+        self.justTookDamageLastCycle = False
+
+        self.hasSwing = True
+        self.canSwing = True 
+        self.attacking = False
+        self.swingDelay = 240 - 30*self.swingMod
+        self.swingCooldown = 0
+        game.room.thingsThatDamagePlayer.append([self.swing, 4, None])
         
-    def handleOnStep(self):
-        self.attemptMove()
-        self.collision()
+    def draw(self, cx, cy, rotationAngle, sightDistance, colour, level):
+        self.sight = Arc(cx, cy, sightDistance*10 + 50, sightDistance*10 + 50, -45, 90, fill = 'lightGrey', opacity = 50, rotateAngle = rotationAngle)
+        self.body = Circle(cx, cy, 7, fill = colour, border = 'black')
+        self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
+        self.swing = Arc(cx, cy, 40+10*level, 40+10*level, -55, 10, fill = 'saddleBrown')
+        self.drawing = Group(self.sight, self.hitbox, self.swing, self.body)
 
     def sightLine(self):
         targetAngle = angleTo(self.drawing.centerX, self.drawing.centerY, player.body.centerX, player.body.centerY)
@@ -272,7 +329,7 @@ class NPC(object):
             direction = 1
 
         # Check if the rotation angle is within 3 degrees of the target angle
-        if rotationAngle < 3:
+        if rotationAngle < 6:
             # Stop rotating
             direction = 0
             angle = angleTo(self.drawing.centerX, self.drawing.centerY, player.body.centerX, player.body.centerY)
@@ -280,44 +337,15 @@ class NPC(object):
             self.dx = dx
             self.dy = dy
             self.move()
-            
+
         # Update the rotation angle based on the rotation direction
-        self.sight.rotateAngle = (self.sight.rotateAngle + direction * self.dr) % 360
+        finalAngle = (self.sight.rotateAngle + direction * self.dr) % 360
+        self.sight.rotateAngle = finalAngle
+        self.swing.rotateAngle = finalAngle
 
     def attemptMove(self):
-        if self.followPlayer:
+        if self.followPlayer and self.attacking == False:
             self.sightLine()
-            # self.move_away_from_npcs(allNPCs, player)
-
-    def move_away_from_npcs(self):
-    #     # Loop through all NPCs in the game
-    #     for NPC in allNPCs:
-    #         # Check if the NPC is not itself and if it's colliding with the current NPC
-    #         if NPC != self and self.hitbox.hitsShape(NPC.hitbox):
-    #             # Calculate the overlap between the two NPCs 
-    #             dx = min(self.hitbox.right, NPC.hitbox.right) - max(self.hitbox.left, NPC.hitbox.left)
-    #             dy = min(self.hitbox.bottom, NPC.hitbox.bottom) - max(self.hitbox.top, NPC.hitbox.top)
-    #             if dx > 0 and dy > 0:
-    #                 # There is an overlap, calculate the amount of overlap
-    #                 overlapX = min(abs(dx), self.hitbox.width + NPC.hitbox.width - abs(dx))
-    #                 overlapY = min(abs(dy), self.hitbox.height + NPC.hitbox.height - abs(dy))
-    #                 overlap = min(overlapX, overlapY)
-    #                 if overlap > 0:
-    #                     # Calculate the direction between the two NPCs
-    #                     dx = self.drawing.centerX - NPC.drawing.centerX
-    #                     dy = self.drawing.centerY - NPC.drawing.centerY
-    #                     length = math.sqrt(dx**2 + dy**2)
-    #                     if length != 0:
-    #                         dx /= length
-    #                         dy /= length
-
-    #                     # Move the two NPCs away from each other
-    #                     # We divide by 2 to ensure that they both move away from each other equally
-    #                     self.drawing.centerX += dx * overlap / 2
-    #                     self.drawing.centerY += dy * overlap / 2
-    #                     NPC.drawing.centerX -= dx * overlap / 2
-                        # NPC.drawing.centerY -= dy * overlap / 2
-        pass
 
     def move(self):
         self.drawing.centerX += self.dx * self.speed
@@ -331,7 +359,7 @@ class NPC(object):
                 (self.hitbox.centerX, self.hitbox.bottom, 0, -self.speed)] # Bottom side
         # Loop through each side and check for collision with the walls
         for x, y, dx, dy in sides:
-            if game.room.walls.hits(x, y):
+            if game.room.thingsWithCollision.hits(x, y):
                 # Move the sprite away from the wall by the speed amount
                 self.drawing.centerX += dx
                 self.drawing.centerY += dy
@@ -340,33 +368,86 @@ class NPC(object):
                     if NPC.hitbox.hits(x,y):
                         self.drawing.centerX += dx
                         self.drawing.centerY += dy
+            if player.hitbox.hits(x,y):
+                self.drawing.centerX += dx
+                self.drawing.centerY += dy
 
-    def draw(self, cx, cy, rotationAngle, sightDistance, colour):
-        self.sight = Arc(cx, cy, sightDistance*10 + 50, sightDistance*10 + 50, -45, 90, fill = 'lightGrey', opacity = 50, rotateAngle = rotationAngle)
-        self.body = Circle(cx, cy, 7, fill = colour, border = 'black')
-        self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
-        self.drawing = Group(self.body, self.sight, self.hitbox)
+    def takesDamage(self):
+        for hurtyItem in [item for item in game.room.thingsThatDamageNPCs if item[0].opacity != 0]:
+            if self.hitbox.hitsShape(hurtyItem[0]):
+                if self.justTookDamageLastCycle == False:
+                    self.health -= hurtyItem[1]
+                    print(self.health)
+                    self.justTookDamageLastCycle = True
+                    if hurtyItem[2] != None:
+                        hurtyItem[2].clear()
+            else:
+                self.justTookDamageLastCycle = False
 
-class Projectile(object): 
-    def __init__(self, cx, cy, angle, colour):
-        self.drawing = Group(Circle(cx, cy, 3, fill = colour))
-        self.moveX, self.moveY = getPointInDir(cx, cy, angle, 100)
-        self.angle = angle
-        self.loaded = True
+    def attackLogic(self):
+        if self.sight.hitsShape(player.hitbox):
+            self.swingAttack()
 
-    def move(self, type, modifier): 
-        if type == 'basic' : 
-            self.nextX, self.nextY = getPointInDir(self.drawing.centerX, self.drawing.centerY, self.angle, 3 + modifier)
-            self.drawing.centerX = self.nextX
-            self.drawing.centerY = self.nextY
-    def clear(self): 
-        self.loaded = False
+    def swingAttack(self): 
+        if self.canSwing == True and self.hasSwing == True:
+            self.attacking = True 
+            self.canSwing = False
+            self.swingCooldown = self.swingDelay
+    
+    def swingAttackAnimation(self): 
+        if self.attacking == True: 
+            self.swing.opacity = 75
+            finishAngle = self.sight.rotateAngle + 95
+            self.swing.rotateAngle += (3 + 1.5*self.swingMod)
+            
+            if self.swing.rotateAngle >= finishAngle:
+                self.attacking = False
+                self.swing.opacity = 0
+                self.swing.rotateAngle = self.sight.rotateAngle
+        else: 
+            self.swing.opacity = 0 
+
+    def manageTimers(self): 
+        if self.swingCooldown != 0:
+           self.swingCooldown -= 1
+        # if self.shootCooldown != 0: # Not implemented yet (or ever)
+        #    self.shootCooldown -= 1
+        # if self.dashCooldown != 0: 
+        #     self.dashCooldown -= 1
+    def updatePlayer(self): 
+        if self.health <= 0:
+            self.die()
+        if self.swingCooldown == 0: 
+            self.canSwing = True
+        # if self.shootCooldown == 0: # Not implemented yet (or ever)
+        #     self.canShoot = True 
+        # if self.dashCooldown == 0: 
+        #     self.canDash = True
+
+    def die(self):
+        # Can add a death sound ext here
+        self.clear()
+
+    def clear(self):
+        game.room.allNPCs.remove(self)
         self.drawing.clear()
-    def handleOnStep(self): 
-        if self.drawing.centerX > 810 or self.drawing.centerX < -10 or self.drawing.centerY > 610 or self.drawing.centerY < -10 : 
-            self.clear()
-        if self.drawing.hitsShape(game.room.thingsWithCollision) == True : 
-            self.clear()
+
+    def handleOnStep(self):
+        self.attemptMove()
+        self.collision()
+        self.takesDamage()
+        if self.attacking == True:
+            self.swingAttackAnimation()
+        else:
+            self.swing.opacity = 0 
+        self.updatePlayer()
+        self.manageTimers()
+        if self.sight.hitsShape(player.hitbox):
+            self.swingAttack()
+
+##########################
+###### ITEM CLASSES ######
+##########################
 
 class Item (object): 
     def __init__(self, cx, cy, type): 
@@ -406,6 +487,39 @@ class Item (object):
     def clear(self): 
         self.drawing.clear()
 
+class Projectile(object): 
+    def __init__(self, cx, cy, angle, colour):
+        self.drawing = Group(Circle(cx, cy, 3, fill = colour))
+        self.moveX, self.moveY = getPointInDir(cx, cy, angle, 100)
+        self.angle = angle
+        self.loaded = True
+
+    def move(self, type, modifier): 
+        if type == 'basic' : 
+            self.nextX, self.nextY = getPointInDir(self.drawing.centerX, self.drawing.centerY, self.angle, 3 + modifier)
+            self.drawing.centerX = self.nextX
+            self.drawing.centerY = self.nextY
+    def clear(self): 
+        self.loaded = False
+        self.drawing.clear()
+        tempList = []
+        for sublist in game.room.thingsThatDamageNPCs:
+            if self not in sublist:
+                tempList.append(sublist)
+        if self in [item for sublist in game.room.thingsThatDamageNPCs for item in sublist]:
+            game.room.thingsThatDamageNPCs = tempList
+        if self in [item for sublist in game.room.thingsThatDamagePlayer for item in sublist]:
+            game.room.thingsThatDamagePlayer = tempList
+    def handleOnStep(self): 
+        if self.drawing.centerX > 810 or self.drawing.centerX < -10 or self.drawing.centerY > 610 or self.drawing.centerY < -10 : 
+            self.clear()
+        if self.drawing.hitsShape(game.room.thingsWithCollision) == True : 
+            self.clear()
+
+###########################
+###### CMU FUNCTIONS ######
+###########################
+
 def onKeyHold(keys):     
     player.handleOnKeys(keys)
 def onKeyPress(key): 
@@ -420,7 +534,7 @@ def onMousePress(x, y):
     player.handleMousePress(x, y)
 def onStep(): 
     player.handleOnStep() 
-    game.room.handleOnStep() 
+    game.room.handleOnStep()
     for enemy in game.room.allNPCs:
         enemy.handleOnStep()
 
@@ -429,7 +543,7 @@ def mapValue(value, valueMin, valueMax, targetMin, targetMax):
     result = ratio * (targetMax-targetMin) + targetMin
     return result
 
-def orientation(x1, y1, x2, y2, type): 
+def orientation(x1, y1, x2, y2, type): # Not realy used... sorry Jonah
     angle = rounded(angleTo(x1, y1, x2, y2))
     if type == 'diagonal' : 
         if angle >= 0 and angle < 90: 
@@ -453,9 +567,14 @@ def orientation(x1, y1, x2, y2, type):
 
 game = GameState()
 player = Player(200, 300, 5)
-enemy1 = NPC(50, 50, 0, 5, 5, 'red')
-enemy2 = NPC(300, 300, 0, 5, 5, 'red')
-game.room.allNPCs.append(enemy1)
-game.room.allNPCs.append(enemy2)
+# enemy1 = NPC(50, 50, 0, 0, 5, 'red')
+# enemy2 = NPC(300, 300, 0, 1, 5, 'red')
+# enemy2.hasSwing = True
+# game.room.allNPCs.append(enemy1)
+# game.room.allNPCs.append(enemy2)
+
+for i in range(1):
+    e = NPC(10+i*50, 10+i*50, 0, 0, 5, 'red')
+    game.room.allNPCs.append(e)
 
 cmu_graphics.run()
