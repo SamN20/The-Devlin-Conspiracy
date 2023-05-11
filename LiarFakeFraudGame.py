@@ -63,6 +63,9 @@ class Player(object):
         self.speed = 0.5 + 0.25*self.moveMod
         self.canMove = True
     
+        self.maxHealth = 4 + level*4
+        self.health = self.maxHealth
+
         self.actions = [None]
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
@@ -156,6 +159,18 @@ class Player(object):
                 self.drawing.centerX += dx
                 self.drawing.centerY += dy
 
+    def takesDamage(self):
+            for hurtyItem in [item for item in game.room.thingsThatDamagePlayer if item[0].opacity != 0]:
+                if self.hitbox.hitsShape(hurtyItem[0]):
+                    if self.justTookDamageLastCycle == False:
+                        self.health -= hurtyItem[1]
+                        print(self.health)
+                        self.justTookDamageLastCycle = True
+                        if hurtyItem[2] != None:
+                            hurtyItem[2].clear()
+                else:
+                    self.justTookDamageLastCycle = False
+
     def swingAttack(self): 
         if self.canSwing == True and player.hasSwing == True:
             self.attacking = True 
@@ -199,6 +214,8 @@ class Player(object):
         if self.dashCooldown != 0: 
             self.dashCooldown -= 1
     def updatePlayer(self): 
+        if self.health <= 0:
+            self.die()
         if self.shootCooldown == 0: 
             self.canShoot = True 
         if self.swingCooldown == 0: 
@@ -210,6 +227,10 @@ class Player(object):
         for item in game.room.items: 
             if distance(self.hitbox.centerX, self.hitbox.centerY, item.hitbox.centerX, item.hitbox.centerY) < 30: 
                 item.hasBeenCollected()
+
+    def die(self):
+        # Not sure what we want to happen when the player is dead
+        print('player is dead')
 
     def handleActionIndex(self, key): 
         if key == Keybinds.actionIndexDown : 
@@ -232,6 +253,7 @@ class Player(object):
     def handleOnStep(self): 
         self.lookRotation(game.room.cursorX, game.room.cursorY)
         self.collision()
+        self.takesDamage()
         self.swingAttackAnimation()
         self.shootPhysics()
         self.dash()
@@ -259,6 +281,8 @@ class Player(object):
 class NPC(object):
     
     def __init__(self, cx, cy, rotationAngle, level, sightDistance, colour):
+        self.draw(cx, cy, rotationAngle, sightDistance, colour, level)
+        
         self.dx = 0
         self.dy = 0
         self.dr = 1
@@ -275,13 +299,12 @@ class NPC(object):
 
         self.justTookDamageLastCycle = False
 
-        self.hasSwing = False
+        self.hasSwing = True
         self.canSwing = True 
         self.attacking = False
         self.swingDelay = 240 - 30*self.swingMod
         self.swingCooldown = 0
-
-        self.draw(cx, cy, rotationAngle, sightDistance, colour, level)
+        game.room.thingsThatDamagePlayer.append([self.swing, 4, None])
         
     def draw(self, cx, cy, rotationAngle, sightDistance, colour, level):
         self.sight = Arc(cx, cy, sightDistance*10 + 50, sightDistance*10 + 50, -45, 90, fill = 'lightGrey', opacity = 50, rotateAngle = rotationAngle)
@@ -550,7 +573,7 @@ player = Player(200, 300, 5)
 # game.room.allNPCs.append(enemy1)
 # game.room.allNPCs.append(enemy2)
 
-for i in range(4):
+for i in range(1):
     e = NPC(10+i*50, 10+i*50, 0, 0, 5, 'red')
     game.room.allNPCs.append(e)
 
