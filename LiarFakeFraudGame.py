@@ -2,7 +2,6 @@ from cmu_graphics import *
 import Keybinds
 
 app.stepsPerSecond = 120
-app.steps = 0
 
 class GameState(object): 
     def __init__(self):
@@ -511,10 +510,8 @@ def onMouseDrag(x, y):
 def onMousePress(x, y): 
     player.handleMousePress(x, y)
 def onStep(): 
-    app.steps += 1
     player.handleOnStep() 
     game.room.handleOnStep()
-    # if app.steps % 2 == 0:
     for enemy in game.room.allNPCs:
         enemy.handleOnStep()
 
@@ -553,7 +550,7 @@ player = Player(200, 300, 5)
 # game.room.allNPCs.append(enemy1)
 # game.room.allNPCs.append(enemy2)
 
-for i in range(2):
+for i in range(4):
     e = NPC(10+i*50, 10+i*50, 0, 0, 5, 'red')
     game.room.allNPCs.append(e)
 
