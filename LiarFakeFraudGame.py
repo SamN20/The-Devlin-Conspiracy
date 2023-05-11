@@ -3,6 +3,7 @@ import Keybinds
 import Sounds
 
 app.stepsPerSecond = 120
+app.background = 'gainsboro'
 
 class GameState(object): 
     def __init__(self):
@@ -12,7 +13,7 @@ class GameState(object):
 
         self.worldList = ['tutorial']
         self.worldListIndex = 0 
-        self.roomList = {'tutorial': ['Tutorial', 0,  ],  # worldName : [ Display Name, intended Progression ID, room1 (class), room2, etc...]
+        self.roomList = {'tutorial': ['???', 0,  ],  # worldName : [ Display Name, intended Progression ID, ]
                          } 
         self.roomListIndex = 2
         
@@ -78,7 +79,7 @@ class CurrentRoomState(object):
             'checkpoint' : False, 
             'savepoint' : False, 
         } 
-        self.walls = Group(Rect(100, 100, 10, 100))
+        self.walls = Group()
         self.thingsWithCollision = Group(self.walls)
         
         self.world = game.roomList[game.worldList[game.worldListIndex]]
@@ -89,6 +90,15 @@ class CurrentRoomState(object):
 
     def handleOnStep(self): 
         pass
+
+    def loadNewRoom(self, newRoom, entrance): # (class of the room to load, which direction its getting loaded from)
+        self.walls.clear()
+        self.room = newRoom
+        for attr in self.attributes: 
+            self.attributes[attr] = self.room.attributes[attr]
+        self.room.load()
+        player.moveTo(self.room.exits[entrance][1], self.room.exits[entrance][2])
+        game.cover.opacity = 100 - self.attributes['lightLevel']*10
 
 class Player (object): 
     def __init__(self, cx, cy, level): 
@@ -131,7 +141,7 @@ class Player (object):
         self.coolDownTimerList = [self.swingCooldown, self.shootCooldown]
     
     def draw(self, cx, cy, level): 
-        self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'gainsboro', opacity = 50)
+        self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'silver', opacity = 50)
         self.body = Circle(cx, cy, 7, fill = 'white', border = 'black')
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
         self.swing = Arc(cx, cy, 30*level, 30*level, -55, 10, fill = 'saddleBrown', opacity = 0)
@@ -333,13 +343,13 @@ class Item (object):
         self.clear()
         if None in player.actions: 
             player.actions.remove(None)
-        if self.itemType == 'dashItem': 
+        if self.itemType == 'dashItem' and player.hasDash == False: 
             player.hasDash = True
             player.actions.append('dash')
-        if self.itemType == 'swingItem': 
+        if self.itemType == 'swingItem' and player.hasSwing == False: 
             player.hasSwing = True
             player.actions.append('swing')
-        if self.itemType == 'shootItem': 
+        if self.itemType == 'shootItem' and player.hasShoot == False: 
             player.hasShoot = True
             player.actions.append('shoot')
     
@@ -351,6 +361,26 @@ class AnimationManager (object):
     def __init__(self): 
         pass 
 
+class Room (object): 
+    def __init__(self): 
+        self.attributes = { 
+            'lightLevel' : 0,
+            'slippery' : False, 
+            'hasBoss' : False, 
+            'hasEnemies' : False, 
+            'hasCollectibles' : False, 
+            'checkpoint' : False, 
+            'savepoint' : False, 
+        } 
+        self.walls = Group()
+        self.roomID = ' '
+        self.exits = { # Direction : Exit being there, spawnX, spawnY
+            'TOP' : [False, 200, 390], 
+            'BOTTOM' : [False, 200, 10], 
+            'LEFT' : [False, 10, 200], 
+            'RIGHT' : [False, 390, 200] 
+            }
+        
 class TestRoom (object): 
     def __init__(self):
         self.attributes = { 
@@ -367,34 +397,20 @@ class TestRoom (object):
         for i in self.attributes : 
             game.currentRoom.attributes[i] = self.attributes[i]
 
-class TutorialRoom1 (object): 
+class TutorialRoom1 (Room): 
     def __init__(self): 
-        self.attributes = { 
-            'lightLevel' : 10,
-            'slippery' : False, 
-            'hasBoss' : False, 
-            'hasEnemies' : False, 
-            'hasCollectibles' : False, 
-            'checkpoint' : False, 
-            'savepoint' : False, 
-        } 
-        self.walls = Group()
-        self.roomID = 'tutorialRoom1'
-        #self.exits = {'TOP' : }
-
-    def load(self): 
-        self.walls.add(buildWall(0, 0, 400, 'horizontal'), buildWall(0, 0, 400, 'vertical'), 
-                       buildWall(0, 390, 400, 'horizontal'), buildWall(390, 0, 400, 'vertical'))
-        game.currentRoom.walls.clear()
-        game.currentRoom.walls = self.walls
-        for i in self.attributes : 
-            game.currentRoom.attributes[i] = self.attributes[i]
+        super().__init__()
+        self.attributes['lightLevel'] = 10
+        self.exits['TOP'][0] = True
     
-class TutorialRoom2 (TutorialRoom1): 
-    #super().__init__() 
-    #super().attributes[]
-    pass
+    def load(self):
+        wallList = [[0, 0, 125, 'h'], [275, 0, 150, 'h'], [0, 0, 400, 'v'], [0, 390, 400, 'h'], [390, 0, 400, 'v']]
+        for wall in wallList:
+            self.walls.add(buildWall(wall[0], wall[1], wall[2], wall[3]))
 
+        game.currentRoom.walls.clear() 
+        game.currentRoom.walls = self.walls 
+    
 def onKeyHold(keys):     
     if 'MENU' not in game.mode and game.currentRoom != None : 
         player.handleOnKeys(keys)
@@ -402,7 +418,7 @@ def onKeyPress(key):
     if 'MENU' not in game.mode and game.currentRoom != None : 
         player.handleKeyPress(key)
     if key == 'l': 
-        game.currentRoom.room.load()
+        game.currentRoom.loadNewRoom(TutorialRoom1(), 'TOP')
 def onMouseMove(x, y): 
     game.handleMouseMove(x, y)
 def onMouseDrag(x, y): 
@@ -443,12 +459,13 @@ def orientation(x1, y1, x2, y2, type):
             return 'above'
         if (angle >= 90 and angle < 180) or (angle >= 180 and angle < 270): 
             return 'below'
-def buildWall(x, y, size, type): 
-    if type == 'horizontal': 
+def buildWall(x, y, size, type): # h for horizontal, v for vertical
+    if type == 'h': 
         wall = Rect(x, y, size, 10)
-    if type == 'vertical': 
+    if type == 'v': 
         wall = Rect(x, y, 10, size)
     return wall
+
 game = GameState()
 player = Player(200, 300, 5)
 
