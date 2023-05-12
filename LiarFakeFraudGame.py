@@ -28,6 +28,7 @@ class GameState(object):
         self.cursorX = 200
         self.cursorY = 200
 
+        Sounds.Titlescreen.set_volume(0.1)
         Sounds.Titlescreen.play(loop = True)
 
     def startGame(self): 
