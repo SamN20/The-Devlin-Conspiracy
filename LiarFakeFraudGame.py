@@ -1,21 +1,79 @@
 from cmu_graphics import * 
 import Keybinds
+import Sounds
 
 app.stepsPerSecond = 120
+app.background = 'gainsboro'
 
 class GameState(object): 
     def __init__(self):
-        self.mode = 'TEST ROOM'
-        self.room = RoomState()
+        self.mode = 'TITLE SCREEN'
+        self.currentRoom = None 
+        self.animations = AnimationManager()
+        self.titleScreen = Group()
 
-        self.roomList = { }
-        self.soundtrack = { }
-        self.soundEffects = { }
+        self.worldList = ['tutorial']
+        self.worldListIndex = 0 
+        self.roomList = {'tutorial': ['???', 0,  ],  # worldName : [ Display Name, intended Progression ID, ]
+                         } 
+        self.roomListIndex = 2
+        
+        self.cover = Rect(0, 0, 400, 400, opacity = 0)
 
-class RoomState(object): 
+        self.animating = False
+        self.startAnimationTimer = 0
+        self.animationComplete = False
+        self.cursor = Circle(0, 0, 10, border = 'red', fill = None) 
+
+        self.cursorX = 200
+        self.cursorY = 200
+
+        Sounds.Titlescreen.set_volume(0.1)
+        Sounds.Titlescreen.play(loop = True)
+
+    def startGame(self): 
+        self.animationComplete = False
+        self.currentRoom = CurrentRoomState()
+        game.currentRoom.thingsThatDamageNPCs.append([player.swing, 4, None])
+        self.cover.opacity = 0
+        self.mode = 'PLAYING'
+        player.drawing.visible = True 
+        Sounds.Titlescreen.pause()
+        game.currentRoom.loadNewRoom(TutorialRoom1, 'TUTORIAL SPAWN')
+        
+    def beginStartingAnimation(self): 
+        self.animating = True
+
+    def animate(self): 
+        self.startAnimationTimer += 1
+        mValue = mapValue(1, 0, 480, 0, 100)
+        if self.startAnimationTimer <= 480 : 
+            if self.cover.opacity + mValue > 100: 
+                self.cover.opacity = 100
+            else: 
+                self.cover.opacity += mValue
+        else: 
+            self.animating = False
+            self.animationComplete = True
+
+    def handleOnStep(self): 
+        self.cursor.centerX = self.cursorX
+        self.cursor.centerY = self.cursorY
+        
+        if self.animating == True : 
+            self.animate()
+        if self.animationComplete == True: 
+            self.startGame()
+        
+    def handleMousePress(self): 
+        self.beginStartingAnimation()
+    def handleMouseMove(self, x, y): 
+        self.cursorX = x 
+        self.cursorY = y
+        
+class CurrentRoomState(object): 
     def __init__(self): 
         self.attributes = { 
-            'difficulty' : 0, 
             'lightLevel' : 0,
             'slippery' : False, 
             'hasBoss' : False, 
@@ -24,32 +82,62 @@ class RoomState(object):
             'checkpoint' : False, 
             'savepoint' : False, 
         } 
-        self.walls = Group(Rect(100, 100, 10, 100))
+        self.walls = Group()
         self.thingsWithCollision = Group(self.walls)
 
                                     # [[thing to hit test, damageAmmount, class (used to clear thing)]]
         self.thingsThatDamagePlayer = []
         self.thingsThatDamageNPCs   = []
 
-        self.cursorX = 200
-        self.cursorY = 200
-        self.roomID = 1 # roomID of 0 is for menus, 1 for test map
+        # self.cursorX = 200
+        # self.cursorY = 200
+        # self.roomID = 1 # roomID of 0 is for menus, 1 for test map
+        
+        self.world = game.roomList[game.worldList[game.worldListIndex]]
+        self.room = TutorialRoom1()
+        self.roomID = self.room.roomID
 
-        self.items = [Item(200, 100, 'dashItem'), Item(250, 100, 'swingItem'), Item(300, 100, 'shootItem')]
+        self.items = [ ]
 
-        self.cursor = Circle(0, 0, 10, border = 'red', fill = None)
+        # self.cursor = Circle(0, 0, 10, border = 'red', fill = None)
 
         self.allNPCs = []
 
     def handleOnStep(self): 
-        self.cursor.centerX = self.cursorX
-        self.cursor.centerY = self.cursorY
+        self.loadingZoneLogic()
+
+    def loadNewRoom(self, newRoom, entrance): # (class of the room to load, which direction its getting loaded from)
+        if newRoom != None: 
+            self.walls.clear()
+            self.room = newRoom()
+            for attr in self.attributes: 
+                self.attributes[attr] = self.room.attributes[attr]
+            self.room.load()
+        
+            player.moveTo(self.room.exits[entrance][0], self.room.exits[entrance][1])
+            game.cover.opacity = 100 - self.attributes['lightLevel']*10
+
+            game.cover.toFront()
+            player.drawing.toFront()
+            game.cursor.toFront
+
+    def loadingZoneLogic(self): 
+        if player.hitbox.centerX < -5 : 
+            self.room.loadingZone('LEFT')
+        if player.hitbox.centerX > 405 : 
+            self.room.loadingZone('RIGHT')
+        if player.hitbox.centerY < -5 : 
+            self.room.loadingZone('TOP')
+        if player.hitbox.centerY > 405 : 
+            self.room.loadingZone('BOTTOM')
+        else: 
+            pass
 
 ###################################
 ###### START OF PLAYER CLASS ######
 ###################################
 
-class Player(object): 
+class Player (object): 
     def __init__(self, cx, cy, level): 
         self.draw(cx, cy, level)
         
@@ -83,7 +171,6 @@ class Player(object):
         self.attacking = False
         self.swingDelay = 240 - 30*self.swingMod
         self.swingCooldown = 0
-        game.room.thingsThatDamageNPCs.append([self.swing, 4, None])
         self.swing
         
         self.hasShoot = False
@@ -95,12 +182,13 @@ class Player(object):
         self.coolDownTimerList = [self.swingCooldown, self.shootCooldown]
     
     def draw(self, cx, cy, level): 
-        self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'gainsboro', opacity = 50)
+        self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'white', opacity = 25)
         self.body = Circle(cx, cy, 7, fill = 'white', border = 'black')
-        self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
-        self.swing = Arc(cx, cy, 30*level, 30*level, -55, 10, fill = 'saddleBrown')
+        self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 0, align = 'center')
+        self.swing = Arc(cx, cy, 30*level, 30*level, -55, 10, fill = 'saddleBrown', opacity = 0)
         self.drawing = Group(self.sight, self.body, self.swing, self.hitbox)
-    
+        self.drawing.visible = False 
+        
     def movement(self, key): 
         controls = {
             Keybinds.up : [0, -self.speed], 
@@ -132,7 +220,7 @@ class Player(object):
                 else:
                     angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY)
                     x, y = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, angle, self.dashSpeed)
-                    if game.room.walls.hitsShape(self.hitbox) == True: 
+                    if game.currentRoom.walls.hitsShape(self.hitbox) == True: 
                         self.isDashing = False
                         self.dashCooldown = self.dashDelay
                         self.canDash = False
@@ -154,13 +242,13 @@ class Player(object):
                 (self.hitbox.centerX, self.hitbox.bottom, 0, -self.speed)] # Bottom side
         # Loop through each side and check for collision with the walls
         for x, y, dx, dy in sides:
-            if game.room.thingsWithCollision.hits(x, y):
+            if game.currentRoom.thingsWithCollision.hits(x, y):
                 # Move the player away from the wall by the speed amount
                 self.drawing.centerX += dx
                 self.drawing.centerY += dy
 
     def takesDamage(self):
-            for hurtyItem in [item for item in game.room.thingsThatDamagePlayer if item[0].opacity != 0]:
+            for hurtyItem in [item for item in game.currentRoom.thingsThatDamagePlayer if item[0].opacity != 0]:
                 if self.hitbox.hitsShape(hurtyItem[0]):
                     if self.justTookDamageLastCycle == False:
                         self.health -= hurtyItem[1]
@@ -181,7 +269,7 @@ class Player(object):
         if self.attacking == True: 
             self.swing.opacity = 75
             finishAngle = self.sight.rotateAngle + 95
-            self.swing.rotateAngle += (3 + 1.5*self.swingMod)
+            self.swing.rotateAngle += (1.5 + .75*self.swingMod)
             
             if self.swing.rotateAngle >= finishAngle:
                 self.attacking = False
@@ -195,7 +283,7 @@ class Player(object):
         if self.canShoot == True: 
             bullet = Projectile(self.hitbox.centerX, self.hitbox.centerY, self.sight.rotateAngle, 'red')
             self.bullets.append(bullet)
-            game.room.thingsThatDamageNPCs.append([bullet.drawing, 2, bullet])
+            game.currentRoom.thingsThatDamageNPCs.append([bullet.drawing, 2, bullet])
             self.shootCooldown = self.shootDelay
             self.canShoot = False
             
@@ -224,7 +312,7 @@ class Player(object):
             self.canDash = True
 
     def collect(self): 
-        for item in game.room.items: 
+        for item in game.currentRoom.items: 
             if distance(self.hitbox.centerX, self.hitbox.centerY, item.hitbox.centerX, item.hitbox.centerY) < 30: 
                 item.hasBeenCollected()
 
@@ -251,7 +339,7 @@ class Player(object):
         if key == Keybinds.collect: 
             self.collect()
     def handleOnStep(self): 
-        self.lookRotation(game.room.cursorX, game.room.cursorY)
+        self.lookRotation(game.cursorX, game.cursorY)
         self.collision()
         self.takesDamage()
         self.swingAttackAnimation()
@@ -261,7 +349,7 @@ class Player(object):
         self.currentAction = self.actions[self.currentActionIndex]
         self.manageTimers()
     def handleMousePress(self, x, y): 
-        if game.room.roomID != 0 : 
+        if game.currentRoom.roomID != 0 : 
             if self.currentAction == 'swing': 
                 self.swingAttack()
                 
@@ -277,6 +365,13 @@ class Player(object):
 ################################
 ###### START OF NPC CLASS ######
 ################################
+                
+# class Projectile (object): 
+#     def __init__(self, cx, cy, angle, colour):
+#         self.drawing = Group(Circle(cx, cy, 3, fill = colour))
+#         self.moveX, self.moveY = getPointInDir(cx, cy, angle, 100)
+#         self.angle = angle
+#         self.loaded = True
 
 class NPC(object):
     
@@ -304,7 +399,7 @@ class NPC(object):
         self.attacking = False
         self.swingDelay = 240 - 30*self.swingMod
         self.swingCooldown = 0
-        game.room.thingsThatDamagePlayer.append([self.swing, 4, None])
+        game.currentRoom.thingsThatDamagePlayer.append([self.swing, 4, None])
         
     def draw(self, cx, cy, rotationAngle, sightDistance, colour, level):
         self.sight = Arc(cx, cy, sightDistance*10 + 50, sightDistance*10 + 50, -45, 90, fill = 'lightGrey', opacity = 50, rotateAngle = rotationAngle)
@@ -359,11 +454,11 @@ class NPC(object):
                 (self.hitbox.centerX, self.hitbox.bottom, 0, -self.speed)] # Bottom side
         # Loop through each side and check for collision with the walls
         for x, y, dx, dy in sides:
-            if game.room.thingsWithCollision.hits(x, y):
+            if game.currentRoom.thingsWithCollision.hits(x, y):
                 # Move the sprite away from the wall by the speed amount
                 self.drawing.centerX += dx
                 self.drawing.centerY += dy
-            for NPC in game.room.allNPCs:
+            for NPC in game.currentRoom.allNPCs:
                 if NPC != self:
                     if NPC.hitbox.hits(x,y):
                         self.drawing.centerX += dx
@@ -373,7 +468,7 @@ class NPC(object):
                 self.drawing.centerY += dy
 
     def takesDamage(self):
-        for hurtyItem in [item for item in game.room.thingsThatDamageNPCs if item[0].opacity != 0]:
+        for hurtyItem in [item for item in game.currentRoom.thingsThatDamageNPCs if item[0].opacity != 0]:
             if self.hitbox.hitsShape(hurtyItem[0]):
                 if self.justTookDamageLastCycle == False:
                     self.health -= hurtyItem[1]
@@ -429,7 +524,7 @@ class NPC(object):
         self.clear()
 
     def clear(self):
-        game.room.allNPCs.remove(self)
+        game.currentRoom.allNPCs.remove(self)
         self.drawing.clear()
 
     def handleOnStep(self):
@@ -473,13 +568,13 @@ class Item (object):
         self.clear()
         if None in player.actions: 
             player.actions.remove(None)
-        if self.itemType == 'dashItem': 
+        if self.itemType == 'dashItem' and player.hasDash == False: 
             player.hasDash = True
             player.actions.append('dash')
-        if self.itemType == 'swingItem': 
+        if self.itemType == 'swingItem' and player.hasSwing == False: 
             player.hasSwing = True
             player.actions.append('swing')
-        if self.itemType == 'shootItem': 
+        if self.itemType == 'shootItem' and player.hasShoot == False: 
             player.hasShoot = True
             player.actions.append('shoot')
     
@@ -503,40 +598,144 @@ class Projectile(object):
         self.loaded = False
         self.drawing.clear()
         tempList = []
-        for sublist in game.room.thingsThatDamageNPCs:
+        for sublist in game.currentRoom.thingsThatDamageNPCs:
             if self not in sublist:
                 tempList.append(sublist)
-        if self in [item for sublist in game.room.thingsThatDamageNPCs for item in sublist]:
-            game.room.thingsThatDamageNPCs = tempList
-        if self in [item for sublist in game.room.thingsThatDamagePlayer for item in sublist]:
-            game.room.thingsThatDamagePlayer = tempList
+        if self in [item for sublist in game.currentRoom.thingsThatDamageNPCs for item in sublist]:
+            game.currentRoom.thingsThatDamageNPCs = tempList
+        if self in [item for sublist in game.currentRoom.thingsThatDamagePlayer for item in sublist]:
+            game.currentRoom.thingsThatDamagePlayer = tempList
     def handleOnStep(self): 
         if self.drawing.centerX > 810 or self.drawing.centerX < -10 or self.drawing.centerY > 610 or self.drawing.centerY < -10 : 
             self.clear()
-        if self.drawing.hitsShape(game.room.thingsWithCollision) == True : 
+        if self.drawing.hitsShape(game.currentRoom.thingsWithCollision) == True : 
             self.clear()
 
 ###########################
 ###### CMU FUNCTIONS ######
 ###########################
 
+class AnimationManager (object): 
+    def __init__(self): 
+        pass 
+
+class Room (object): 
+    def __init__(self): 
+        self.attributes = { 
+            'lightLevel' : 10,
+            'slippery' : False, 
+            'hasBoss' : False, 
+            'hasEnemies' : False, 
+            'hasCollectibles' : False, 
+            'checkpoint' : False, 
+            'savepoint' : False, 
+        } 
+        self.walls = Group()
+        self.roomID = ' '
+        
+        self.exitLabels = ['TOP', 'BOTTOM', 'LEFT', 'RIGHT']
+        self.exits = { # Direction : spawnX, spawnY
+            'TOP' : [200, 395, None], 
+            'BOTTOM' : [200, 5, None], 
+            'LEFT' : [395, 200, None], 
+            'RIGHT' : [5, 200, None], 
+            'TUTORIAL SPAWN' : [200, 350, None] 
+            }
+        self.wallList = [[0, 0, 125, 'h'], [275, 0, 150, 'h'], [0, 390, 125, 'h'], [275, 390, 150, 'h'], 
+                         [390, 0, 125, 'v'], [390, 275, 125, 'v'], [0, 0, 125, 'v'], [0, 275, 125, 'v']]
+        
+        self.exitBlockers = {'TOP' : [0, 0, 400, 'h'], 
+                             'BOTTOM' : [0, 390, 400, 'h'], 
+                             'LEFT' : [0, 0, 400, 'v'], 
+                             'RIGHT' : [390, 0, 400, 'v']} # [TOP, BOTTOM, LEFT, RIGHT]
+    def loadWalls(self): 
+        for label in self.exitLabels : 
+            if self.exits[label][2] == None: 
+                self.wallList.append(self.exitBlockers[label])
+        for wall in self.wallList:
+            self.walls.add(buildWall(wall[0], wall[1], wall[2], wall[3]))
+                
+        game.currentRoom.walls.clear() 
+        game.currentRoom.walls = self.walls 
+    
+    def loadingZone(self, direction): 
+        zone = self.exits[direction][2]
+        game.currentRoom.loadNewRoom(zone, direction)
+    
+    def load(self): 
+        self.loadWalls()
+
+class TestRoom (object): 
+    def __init__(self):
+        self.attributes = { 
+            'lightLevel' : 10,
+            'slippery' : False, 
+            'hasBoss' : False, 
+            'hasEnemies' : True, 
+            'hasCollectibles' : True, 
+            'checkpoint' : False, 
+            'savepoint' : False, 
+        } 
+        self.roomID = 'testRoom'
+    def load(self): 
+        for i in self.attributes : 
+            game.currentRoom.attributes[i] = self.attributes[i]
+
+class TutorialRoom1 (Room): 
+    def __init__(self): 
+        super().__init__()
+        self.exits['TOP'][2] = TutorialRoom2
+    
+class TutorialRoom2 (Room): 
+    def __init__(self): 
+        super().__init__()
+        self.exits['BOTTOM'][2] = TutorialRoom1
+        self.exits['RIGHT'][2] = TutorialRoom3
+        
+class TutorialRoom3 (Room): 
+    def __init__(self): 
+        super().__init__()
+        self.exits['LEFT'][2] = TutorialRoom2
+        self.exits['RIGHT'][2] = TutorialRoom4
+
+class TutorialRoom4 (Room): 
+    def __init__(self): 
+        super().__init__() 
+        self.exits['LEFT'][2] = TutorialRoom3
+
 def onKeyHold(keys):     
-    player.handleOnKeys(keys)
+    if 'MENU' not in game.mode and game.currentRoom != None : 
+        player.handleOnKeys(keys)
 def onKeyPress(key): 
-    player.handleKeyPress(key)
+    if 'MENU' not in game.mode and game.currentRoom != None : 
+        player.handleKeyPress(key)
+
+### debug ###
+    if key == 'left': 
+        game.currentRoom.room.loadingZone('LEFT')
+    if key == 'right':
+        game.currentRoom.room.loadingZone('RIGHT')
+    if key == 'up':
+        game.currentRoom.room.loadingZone('TOP')
+    if key == 'down':
+        game.currentRoom.room.loadingZone('BOTTOM')
+
 def onMouseMove(x, y): 
-    game.room.cursorX = x
-    game.room.cursorY = y
+    game.handleMouseMove(x, y)
 def onMouseDrag(x, y): 
-    game.room.cursorX = x
-    game.room.cursorY = y
+    game.handleMouseMove(x, y)
 def onMousePress(x, y): 
-    player.handleMousePress(x, y)
+    if game.currentRoom != None : 
+        player.handleMousePress(x, y)
+    if game.mode == 'TITLE SCREEN': 
+        game.handleMousePress()
 def onStep(): 
-    player.handleOnStep() 
-    game.room.handleOnStep()
-    for enemy in game.room.allNPCs:
-        enemy.handleOnStep()
+    if 'MENU' not in game.mode and game.currentRoom != None : 
+        player.handleOnStep() 
+        game.currentRoom.handleOnStep() 
+        for enemy in game.currentRoom.allNPCs:
+            enemy.handleOnStep()
+    game.handleOnStep()
 
 def mapValue(value, valueMin, valueMax, targetMin, targetMax):
     ratio = (value-valueMin) / (valueMax-valueMin)
@@ -564,6 +763,12 @@ def orientation(x1, y1, x2, y2, type): # Not realy used... sorry Jonah
             return 'above'
         if (angle >= 90 and angle < 180) or (angle >= 180 and angle < 270): 
             return 'below'
+def buildWall(x, y, size, type): # h for horizontal, v for vertical
+    if type == 'h': 
+        wall = Rect(x, y, size, 10)
+    if type == 'v': 
+        wall = Rect(x, y, 10, size)
+    return wall
 
 game = GameState()
 player = Player(200, 300, 5)
@@ -573,8 +778,8 @@ player = Player(200, 300, 5)
 # game.room.allNPCs.append(enemy1)
 # game.room.allNPCs.append(enemy2)
 
-for i in range(1):
-    e = NPC(10+i*50, 10+i*50, 0, 0, 5, 'red')
-    game.room.allNPCs.append(e)
+# for i in range(1):
+#     e = NPC(10+i*50, 10+i*50, 0, 0, 5, 'red')
+#     game.currentRoom.allNPCs.append(e)
 
 cmu_graphics.run()

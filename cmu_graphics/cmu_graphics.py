@@ -241,7 +241,12 @@ class Sound(object):
 
     def pause(self):
         self.sound.stop()
+   
+    def fadeout(self, time):
+        self.sound.fadeout(time)
 
+    def set_volume(self, volume):
+        self.sound.set_volume(volume)
 
 SHAPES = [ Arc, Circle, Image, Label, Line, Oval,
             Polygon, Rect, RegularPolygon, Star, ]
