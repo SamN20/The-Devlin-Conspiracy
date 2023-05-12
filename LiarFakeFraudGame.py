@@ -86,16 +86,15 @@ class CurrentRoomState(object):
         self.thingsWithCollision = Group(self.walls)
 
                                     # [[thing to hit test, damageAmmount, class (used to clear thing)]]
-        self.thingsThatDamagePlayer = []
-        self.thingsThatDamageNPCs   = []
+        self.thingsThatDamagePlayer = [ ]
+        self.thingsThatDamageNPCs   = [ ]
         
         self.world = game.roomList[game.worldList[game.worldListIndex]]
         self.room = TutorialRoom1()
         self.roomID = self.room.roomID
 
         self.items = [ ]
-
-        self.allNPCs = []
+        self.allNPCs = [ ]
 
     def handleOnStep(self): 
         self.loadingZoneLogic()
@@ -124,8 +123,6 @@ class CurrentRoomState(object):
             self.room.loadingZone('TOP')
         if player.hitbox.centerY > 405 : 
             self.room.loadingZone('BOTTOM')
-        else: 
-            pass
 
 ###################################
 ###### START OF PLAYER CLASS ######
@@ -620,8 +617,11 @@ class Room (object):
         self.walls = Group()
         self.roomID = ' '
         
+        self.allNPCs = [ ]
+        self.allItems = [ ]
+
         self.exitLabels = ['TOP', 'BOTTOM', 'LEFT', 'RIGHT']
-        self.exits = { # Direction : spawnX, spawnY
+        self.exits = { # Direction : spawnX, spawnY, 
             'TOP' : [200, 395, None], 
             'BOTTOM' : [200, 5, None], 
             'LEFT' : [395, 200, None], 
@@ -635,6 +635,9 @@ class Room (object):
                              'BOTTOM' : [0, 390, 400, 'h'], 
                              'LEFT' : [0, 0, 400, 'v'], 
                              'RIGHT' : [390, 0, 400, 'v']} # [TOP, BOTTOM, LEFT, RIGHT]
+        
+        self.npcList = [ ]
+        
     def loadWalls(self): 
         for label in self.exitLabels : 
             if self.exits[label][2] == None: 
@@ -645,12 +648,23 @@ class Room (object):
         game.currentRoom.walls.clear() 
         game.currentRoom.walls = self.walls 
     
+    def loadNPCs(self): 
+        for enemy in self.npcList : 
+            self.allNPCs.append(NPC(enemy[0], enemy[1], enemy[2], enemy[3], enemy[4], enemy[5]))
+
+        for enemy in game.currentRoom.allNPCs: 
+            enemy.clear()
+        
+        game.currentRoom.allNPCs = self.allNPCs
+
+    def load(self): 
+        self.loadWalls()
+        self.loadNPCs()
+    
     def loadingZone(self, direction): 
         zone = self.exits[direction][2]
         game.currentRoom.loadNewRoom(zone, direction)
     
-    def load(self): 
-        self.loadWalls()
 
 class TestRoom (object): 
     def __init__(self):
@@ -672,6 +686,7 @@ class TutorialRoom1 (Room):
     def __init__(self): 
         super().__init__()
         self.exits['TOP'][2] = TutorialRoom2
+        self.npcList = [[100, 100, 0, 0, 5, 'red']]
     
 class TutorialRoom2 (Room): 
     def __init__(self): 
