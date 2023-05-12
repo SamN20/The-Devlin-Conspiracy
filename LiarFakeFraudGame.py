@@ -27,6 +27,7 @@ class GameState(object):
         self.cursorX = 200
         self.cursorY = 200
 
+        Sounds.Titlescreen.set_volume(0.1)
         Sounds.Titlescreen.play(loop = True)
 
     def startGame(self): 
@@ -35,7 +36,7 @@ class GameState(object):
         self.cover.opacity = 0
         self.mode = 'PLAYING'
         player.drawing.visible = True 
-        Sounds.Titlescreen.pause()
+        Sounds.Titlescreen.fadeout(500)
         
 
     def beginStartingAnimation(self): 
@@ -419,6 +420,7 @@ def onKeyPress(key):
         player.handleKeyPress(key)
     if key == 'l': 
         game.currentRoom.loadNewRoom(TutorialRoom1(), 'TOP')
+
 def onMouseMove(x, y): 
     game.handleMouseMove(x, y)
 def onMouseDrag(x, y): 
