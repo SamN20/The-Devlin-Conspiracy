@@ -10,6 +10,7 @@ class GameState(object):
         self.mode = 'TITLE SCREEN'
         self.currentRoom = None 
         self.animations = AnimationManager()
+        self.titleScreen = Group()
 
         self.worldList = ['tutorial']
         self.worldListIndex = 0 
@@ -36,8 +37,8 @@ class GameState(object):
         self.mode = 'PLAYING'
         player.drawing.visible = True 
         Sounds.Titlescreen.pause()
+        game.currentRoom.loadNewRoom(TutorialRoom1(), 'TUTORIAL SPAWN')
         
-
     def beginStartingAnimation(self): 
         self.animating = True
 
@@ -89,7 +90,7 @@ class CurrentRoomState(object):
         self.items = [ ]
 
     def handleOnStep(self): 
-        pass
+        self.loadingZoneLogic()
 
     def loadNewRoom(self, newRoom, entrance): # (class of the room to load, which direction its getting loaded from)
         self.walls.clear()
@@ -97,8 +98,25 @@ class CurrentRoomState(object):
         for attr in self.attributes: 
             self.attributes[attr] = self.room.attributes[attr]
         self.room.load()
-        player.moveTo(self.room.exits[entrance][1], self.room.exits[entrance][2])
+        
+        player.moveTo(self.room.exits[entrance][0], self.room.exits[entrance][1])
         game.cover.opacity = 100 - self.attributes['lightLevel']*10
+        
+        game.cover.toFront()
+        player.drawing.toFront()
+        game.cursor.toFront
+
+    def loadingZoneLogic(self): 
+        if player.hitbox.centerX < -5 : 
+            self.room.loadingZone('LEFT')
+        if player.hitbox.centerX > 405 : 
+            self.room.loadingZone('RIGHT')
+        if player.hitbox.centerY < -5 : 
+            self.room.loadingZone('TOP')
+        if player.hitbox.centerY > 405 : 
+            self.room.loadingZone('BOTTOM')
+        else: 
+            pass
 
 class Player (object): 
     def __init__(self, cx, cy, level): 
@@ -141,9 +159,9 @@ class Player (object):
         self.coolDownTimerList = [self.swingCooldown, self.shootCooldown]
     
     def draw(self, cx, cy, level): 
-        self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'silver', opacity = 50)
+        self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'white', opacity = 25)
         self.body = Circle(cx, cy, 7, fill = 'white', border = 'black')
-        self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
+        self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 0, align = 'center')
         self.swing = Arc(cx, cy, 30*level, 30*level, -55, 10, fill = 'saddleBrown', opacity = 0)
         self.drawing = Group(self.sight, self.body, self.swing, self.hitbox)
         self.drawing.visible = False 
@@ -364,7 +382,7 @@ class AnimationManager (object):
 class Room (object): 
     def __init__(self): 
         self.attributes = { 
-            'lightLevel' : 0,
+            'lightLevel' : 10,
             'slippery' : False, 
             'hasBoss' : False, 
             'hasEnemies' : False, 
@@ -374,13 +392,17 @@ class Room (object):
         } 
         self.walls = Group()
         self.roomID = ' '
-        self.exits = { # Direction : Exit being there, spawnX, spawnY
-            'TOP' : [False, 200, 390], 
-            'BOTTOM' : [False, 200, 10], 
-            'LEFT' : [False, 10, 200], 
-            'RIGHT' : [False, 390, 200] 
+        self.exits = { # Direction : spawnX, spawnY
+            'TOP' : [200, 395, None], 
+            'BOTTOM' : [200, 5, None], 
+            'LEFT' : [5, 200, None], 
+            'RIGHT' : [395, 200, None], 
+            'TUTORIAL SPAWN' : [200, 350, None] 
             }
-        
+    def loadingZone(self, direction): 
+        zone = self.exits[direction][2]()
+        game.currentRoom.loadNewRoom(zone, direction)
+
 class TestRoom (object): 
     def __init__(self):
         self.attributes = { 
@@ -400,8 +422,7 @@ class TestRoom (object):
 class TutorialRoom1 (Room): 
     def __init__(self): 
         super().__init__()
-        self.attributes['lightLevel'] = 10
-        self.exits['TOP'][0] = True
+        self.exits['TOP'][2] = TutorialRoom2
     
     def load(self):
         wallList = [[0, 0, 125, 'h'], [275, 0, 150, 'h'], [0, 0, 400, 'v'], [0, 390, 400, 'h'], [390, 0, 400, 'v']]
@@ -411,14 +432,25 @@ class TutorialRoom1 (Room):
         game.currentRoom.walls.clear() 
         game.currentRoom.walls = self.walls 
     
+class TutorialRoom2 (Room): 
+    def __init__(self): 
+        super().__init__()
+        self.exits['BOTTOM'][2] = TutorialRoom1
+
+    def load(self):
+        wallList = [[0, 0, 400, 'h'], [0, 0, 400, 'v'], [0, 390, 125, 'h'], [275, 390, 150, 'h'], [390, 0, 125, 'v'], [390, 275, 125, 'v']]
+        for wall in wallList:
+            self.walls.add(buildWall(wall[0], wall[1], wall[2], wall[3]))
+
+        game.currentRoom.walls.clear() 
+        game.currentRoom.walls = self.walls 
+
 def onKeyHold(keys):     
     if 'MENU' not in game.mode and game.currentRoom != None : 
         player.handleOnKeys(keys)
 def onKeyPress(key): 
     if 'MENU' not in game.mode and game.currentRoom != None : 
         player.handleKeyPress(key)
-    if key == 'l': 
-        game.currentRoom.loadNewRoom(TutorialRoom1(), 'TOP')
 def onMouseMove(x, y): 
     game.handleMouseMove(x, y)
 def onMouseDrag(x, y): 
