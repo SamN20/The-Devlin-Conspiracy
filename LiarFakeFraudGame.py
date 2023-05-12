@@ -28,7 +28,7 @@ class GameState(object):
         self.cursorX = 200
         self.cursorY = 200
 
-        Sounds.Titlescreen.set_volume(0.1)
+        Sounds.Titlescreen.set_volume(0.5)
         Sounds.Titlescreen.play(loop = True)
 
     def startGame(self): 
@@ -88,18 +88,12 @@ class CurrentRoomState(object):
                                     # [[thing to hit test, damageAmmount, class (used to clear thing)]]
         self.thingsThatDamagePlayer = []
         self.thingsThatDamageNPCs   = []
-
-        # self.cursorX = 200
-        # self.cursorY = 200
-        # self.roomID = 1 # roomID of 0 is for menus, 1 for test map
         
         self.world = game.roomList[game.worldList[game.worldListIndex]]
         self.room = TutorialRoom1()
         self.roomID = self.room.roomID
 
         self.items = [ ]
-
-        # self.cursor = Circle(0, 0, 10, border = 'red', fill = None)
 
         self.allNPCs = []
 
@@ -366,13 +360,6 @@ class Player (object):
 ###### START OF NPC CLASS ######
 ################################
                 
-# class Projectile (object): 
-#     def __init__(self, cx, cy, angle, colour):
-#         self.drawing = Group(Circle(cx, cy, 3, fill = colour))
-#         self.moveX, self.moveY = getPointInDir(cx, cy, angle, 100)
-#         self.angle = angle
-#         self.loaded = True
-
 class NPC(object):
     
     def __init__(self, cx, cy, rotationAngle, level, sightDistance, colour):
@@ -703,6 +690,10 @@ class TutorialRoom4 (Room):
         super().__init__() 
         self.exits['LEFT'][2] = TutorialRoom3
 
+###########################
+###### CMU FUNCTIONS ######
+###########################
+
 def onKeyHold(keys):     
     if 'MENU' not in game.mode and game.currentRoom != None : 
         player.handleOnKeys(keys)
@@ -763,6 +754,11 @@ def orientation(x1, y1, x2, y2, type): # Not realy used... sorry Jonah
             return 'above'
         if (angle >= 90 and angle < 180) or (angle >= 180 and angle < 270): 
             return 'below'
+
+##########################
+###### MAP BUILDING ######
+##########################
+
 def buildWall(x, y, size, type): # h for horizontal, v for vertical
     if type == 'h': 
         wall = Rect(x, y, size, 10)
@@ -770,8 +766,13 @@ def buildWall(x, y, size, type): # h for horizontal, v for vertical
         wall = Rect(x, y, 10, size)
     return wall
 
+###########################
+###### STARTING GAME ######
+###########################
+
 game = GameState()
 player = Player(200, 300, 5)
+
 # enemy1 = NPC(50, 50, 0, 0, 5, 'red')
 # enemy2 = NPC(300, 300, 0, 1, 5, 'red')
 # enemy2.hasSwing = True
