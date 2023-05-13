@@ -647,6 +647,7 @@ class Room (object):
 
                 
         game.currentRoom.walls.clear() 
+        game.currentRoom.thingsWithCollision.clear()
         game.currentRoom.walls = self.walls 
         for wall in self.walls:
             game.currentRoom.thingsWithCollision.add(wall)
