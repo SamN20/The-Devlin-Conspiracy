@@ -644,9 +644,12 @@ class Room (object):
                 self.wallList.append(self.exitBlockers[label])
         for wall in self.wallList:
             self.walls.add(buildWall(wall[0], wall[1], wall[2], wall[3]))
+
                 
         game.currentRoom.walls.clear() 
         game.currentRoom.walls = self.walls 
+        for wall in self.walls:
+            game.currentRoom.thingsWithCollision.add(wall)
     
     def loadNPCs(self): 
         for enemy in self.npcList : 
