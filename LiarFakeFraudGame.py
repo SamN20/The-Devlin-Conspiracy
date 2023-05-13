@@ -130,8 +130,6 @@ class CurrentRoomState(object):
 
 class Player (object): 
     def __init__(self, cx, cy, level): 
-        self.draw(cx, cy, level)
-        
         self.moveMod = 0 
         self.shootMod = 0 
         self.swingMod = 0
@@ -144,6 +142,8 @@ class Player (object):
     
         self.maxHealth = 4 + level*4
         self.health = self.maxHealth
+
+        self.draw(cx, cy, level)
 
         self.actions = [None]
         self.currentActionIndex = 0
@@ -179,6 +179,7 @@ class Player (object):
         self.swing = Arc(cx, cy, 30*level, 30*level, -55, 10, fill = 'saddleBrown', opacity = 0)
         self.drawing = Group(self.sight, self.body, self.swing, self.hitbox)
         self.drawing.visible = False 
+        self.healthBar = HealthBar(self)
         
     def movement(self, key): 
         controls = {
@@ -293,6 +294,7 @@ class Player (object):
         if self.dashCooldown != 0: 
             self.dashCooldown -= 1
     def updatePlayer(self): 
+        self.healthBar.updateHealthBar(self)
         if self.health <= 0:
             self.die()
         if self.shootCooldown == 0: 
@@ -360,8 +362,7 @@ class Player (object):
 class NPC(object):
     
     def __init__(self, cx, cy, rotationAngle, level, sightDistance, colour):
-        self.draw(cx, cy, rotationAngle, sightDistance, colour, level)
-        
+              
         self.dx = 0
         self.dy = 0
         self.dr = 1
@@ -370,6 +371,8 @@ class NPC(object):
 
         self.maxHealth = 4 + level*4
         self.health = self.maxHealth
+
+        self.draw(cx, cy, rotationAngle, sightDistance, colour, level)
 
         self.moveMod = 0 
         self.shootMod = 0 
@@ -391,6 +394,7 @@ class NPC(object):
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
         self.swing = Arc(cx, cy, 40+10*level, 40+10*level, -55, 10, fill = 'saddleBrown')
         self.drawing = Group(self.sight, self.hitbox, self.swing, self.body)
+        self.healthBar = HealthBar(self)
 
     def sightLine(self):
         targetAngle = angleTo(self.drawing.centerX, self.drawing.centerY, player.body.centerX, player.body.centerY)
@@ -494,6 +498,7 @@ class NPC(object):
         # if self.dashCooldown != 0: 
         #     self.dashCooldown -= 1
     def updatePlayer(self): 
+        self.healthBar.updateHealthBar(self)
         if self.health <= 0:
             self.die()
         if self.swingCooldown == 0: 
@@ -595,9 +600,33 @@ class Projectile(object):
         if self.drawing.hitsShape(game.currentRoom.thingsWithCollision) == True : 
             self.clear()
 
-###########################
-###### CMU FUNCTIONS ######
-###########################
+##################################
+###### START OF GUI CLASSES ######
+##################################
+
+class HealthBar (object):
+    def __init__(self, character): # character is the player/NPC that the health bar is for
+        self.drawHealthBar(character.health, character.maxHealth, character)
+
+    def updateHealthBar(self, character):
+        self.drawing.visible = character.drawing.visible
+        self.middle.width = mapValue(character.health, 0, character.maxHealth, 0.1, 50) # 0.1 is the min width of the health bar (to prevent a rectangle with no width)
+        self.drawing.centerX = character.hitbox.centerX
+        self.drawing.bottom = character.hitbox.top - 5
+
+    def drawHealthBar(self, health, maxHealth, character):
+        x = character.hitbox.centerX
+        y = character.hitbox.top - 5
+        width=mapValue(health, 0, maxHealth, 0, 50) # 50 is the max width of the health bar
+        self.outline = Rect(x, y, width+2, 5,  fill=None, border="black", borderWidth=1, align='bottom')
+        self.middle = Rect(self.outline.left+1, self.outline.centerY, width, 2,  fill="green", align='left')
+        self.drawing = Group(self.outline, self.middle)
+        self.drawing.opacity = 50
+        self.drawing.visible = character.drawing.visible
+
+##########################
+###### ROOM CLASSES ######
+##########################
 
 class AnimationManager (object): 
     def __init__(self): 
@@ -646,7 +675,10 @@ class Room (object):
             self.walls.add(buildWall(wall[0], wall[1], wall[2], wall[3]))
                 
         game.currentRoom.walls.clear() 
+        game.currentRoom.thingsWithCollision.clear() 
         game.currentRoom.walls = self.walls 
+        for wall in self.walls:
+            game.currentRoom.thingsWithCollision.add(wall)
     
     def loadNPCs(self): 
         for enemy in self.npcList : 
