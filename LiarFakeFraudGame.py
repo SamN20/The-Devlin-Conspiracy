@@ -11,6 +11,7 @@ class GameState(object):
         self.currentRoom = None 
         self.animations = AnimationManager()
         self.titleScreen = Group()
+        self.drawTitleScreen()
 
         self.worldList = ['tutorial']
         self.worldListIndex = 0 
@@ -28,17 +29,21 @@ class GameState(object):
         self.cursorX = 200
         self.cursorY = 200
 
-        Sounds.Titlescreen.set_volume(0.5)
+        Sounds.Titlescreen.set_volume(0.2)
         Sounds.Titlescreen.play(loop = True)
+
+    def drawTitleScreen(self):
+        self.titleScreen.add(Image('Images/Title-Screen.png', 0, 0, width = 400, height = 400))
 
     def startGame(self): 
         self.animationComplete = False
         self.currentRoom = CurrentRoomState()
         game.currentRoom.thingsThatDamageNPCs.append([player.swing, 4, None])
         self.cover.opacity = 0
+        self.titleScreen.clear()
         self.mode = 'PLAYING'
         player.drawing.visible = True 
-        Sounds.Titlescreen.pause()
+        Sounds.Titlescreen.fadeout(200)
         game.currentRoom.loadNewRoom(TutorialRoom1, 'TUTORIAL SPAWN')
         
     def beginStartingAnimation(self): 
@@ -145,7 +150,7 @@ class Player (object):
 
         self.draw(cx, cy, level)
 
-        self.actions = [None]
+        self.actions = ['shoot']
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
         
@@ -164,7 +169,7 @@ class Player (object):
         self.swingCooldown = 0
         self.swing
         
-        self.hasShoot = False
+        self.hasShoot = True
         self.canShoot = True
         self.bullets = [ ]
         self.shootDelay = 180 - 30*self.shootMod
@@ -515,6 +520,7 @@ class NPC(object):
     def clear(self):
         game.currentRoom.allNPCs.remove(self)
         self.drawing.clear()
+        self.healthBar.clearHealthBar()
 
     def handleOnStep(self):
         self.attemptMove()
@@ -609,7 +615,8 @@ class HealthBar (object):
         self.drawHealthBar(character.health, character.maxHealth, character)
 
     def updateHealthBar(self, character):
-        self.drawing.visible = character.drawing.visible
+        if character.health != character.maxHealth:
+            self.drawing.visible = character.drawing.visible
         self.middle.width = mapValue(character.health, 0, character.maxHealth, 0.1, 50) # 0.1 is the min width of the health bar (to prevent a rectangle with no width)
         self.drawing.centerX = character.hitbox.centerX
         self.drawing.bottom = character.hitbox.top - 5
@@ -622,7 +629,11 @@ class HealthBar (object):
         self.middle = Rect(self.outline.left+1, self.outline.centerY, width, 2,  fill="green", align='left')
         self.drawing = Group(self.outline, self.middle)
         self.drawing.opacity = 50
-        self.drawing.visible = character.drawing.visible
+        self.drawing.visible = False
+
+    def clearHealthBar(self):
+        self.drawing.clear()
+
 
 ##########################
 ###### ROOM CLASSES ######
@@ -682,10 +693,10 @@ class Room (object):
     
     def loadNPCs(self): 
         for enemy in self.npcList : 
-            self.allNPCs.append(NPC(enemy[0], enemy[1], enemy[2], enemy[3], enemy[4], enemy[5]))
+            self.allNPCs.append(NPC(enemy[0], enemy[1], enemy[2], enemy[3], enemy[4], enemy[5])) 
 
-        for enemy in game.currentRoom.allNPCs: 
-            enemy.clear()
+        for i in range(len(game.currentRoom.allNPCs)): 
+            game.currentRoom.allNPCs[0].clear()
         
         game.currentRoom.allNPCs = self.allNPCs
 
@@ -718,7 +729,7 @@ class TutorialRoom1 (Room):
     def __init__(self): 
         super().__init__()
         self.exits['TOP'][2] = TutorialRoom2
-        self.npcList = [[100, 100, 0, 0, 5, 'red']]
+        self.npcList = [[100, 100, 0, 1, 5, 'red'], [100, 300, 0, 1, 5, 'red']]
     
 class TutorialRoom2 (Room): 
     def __init__(self): 
