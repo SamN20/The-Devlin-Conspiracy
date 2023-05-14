@@ -33,7 +33,13 @@ class GameState(object):
         Sounds.Titlescreen.play(loop = True)
 
     def drawTitleScreen(self):
-        self.titleScreen.add(Image('Images/Title-Screen.png', 0, 0, width = 400, height = 400))
+        backgroundImage = Image('Images/Title-Screen.png', 0, 0, width = 400, height = 400)
+        backDrop = Rect(0, 18, 400, 62, fill = 'black', opacity = 30)
+        TitleText = Label('The Devlin Conspiracy', 200, 35, size = 30, font = 'monospace', bold = True, fill = 'red', border = 'black', borderWidth = 1.5)
+        SubText = Label('The Liar, The Fake, and The Fraud', 200, 65, size = 18, font = 'monospace', bold = True, fill = 'red', border = 'black', borderWidth = 1)
+        backDrop2 = Rect(45, 367, 309, 16, fill = 'black', opacity = 30)
+        ClickToStart = Label('Click Anywhere To Start Your Adventure', 200, 375, size = 13, font = 'monospace', bold = True, fill = 'red', border = 'black', borderWidth = 0.5)
+        self.titleScreen.add(backgroundImage, backDrop, TitleText, SubText, backDrop2, ClickToStart)
 
     def startGame(self): 
         self.animationComplete = False
@@ -43,10 +49,10 @@ class GameState(object):
         self.titleScreen.clear()
         self.mode = 'PLAYING'
         player.drawing.visible = True 
-        Sounds.Titlescreen.fadeout(200)
         game.currentRoom.loadNewRoom(TutorialRoom1, 'TUTORIAL SPAWN')
         
     def beginStartingAnimation(self): 
+        Sounds.Titlescreen.fadeout(6000)
         self.animating = True
 
     def animate(self): 
@@ -760,14 +766,15 @@ def onKeyPress(key):
         player.handleKeyPress(key)
 
 ### debug ###
-    if key == 'left': 
-        game.currentRoom.room.loadingZone('LEFT')
-    if key == 'right':
-        game.currentRoom.room.loadingZone('RIGHT')
-    if key == 'up':
-        game.currentRoom.room.loadingZone('TOP')
-    if key == 'down':
-        game.currentRoom.room.loadingZone('BOTTOM')
+    if game.mode != 'TITLE SCREEN' :
+        if key == 'left': 
+            game.currentRoom.room.loadingZone('LEFT')
+        if key == 'right':
+            game.currentRoom.room.loadingZone('RIGHT')
+        if key == 'up':
+            game.currentRoom.room.loadingZone('TOP')
+        if key == 'down':
+            game.currentRoom.room.loadingZone('BOTTOM')
 
 def onMouseMove(x, y): 
     game.handleMouseMove(x, y)
@@ -816,6 +823,39 @@ def orientation(x1, y1, x2, y2, type): # Not realy used... sorry Jonah
 ##########################
 ###### MAP BUILDING ######
 ##########################
+
+def roundedRect(x, y, width, height, colour, outlineColour, outlineWidth):
+    RRect = Group()
+    if outlineColour != None:
+        g.outline = Group()
+        width -= 14
+        height -= 14
+        r1 = Rect(x, y, width+20, height, fill=outlineColour, align='center')
+        r2 = Rect(x, y, width, height+20, fill=outlineColour, align='center')
+        RRect.outline.add(
+        Circle(r2.left, r1.top, 10, fill=outlineColour),
+        Circle(r2.right, r1.top, 10, fill=outlineColour),
+        Circle(r2.left, r1.bottom, 10, fill=outlineColour),
+        Circle(r2.right, r1.bottom, 10, fill=outlineColour),
+        r1, r2
+        )
+        RRect.add(RRect.outline)
+        width += 13
+        height += 13
+
+    width -= 15
+    height -= 15
+    r1 = Rect(x, y, width+20, height, fill=colour, align='center')
+    r2 = Rect(x, y, width, height+20, fill=colour, align='center')
+    RRect.add(
+    Circle(r2.left, r1.top, 10, fill=colour),
+    Circle(r2.right, r1.top, 10, fill=colour),
+    Circle(r2.left, r1.bottom, 10, fill=colour),
+    Circle(r2.right, r1.bottom, 10, fill=colour),
+    r1, r2
+    )
+    return RRect
+
 
 def buildWall(x, y, size, type): # h for horizontal, v for vertical
     if type == 'h': 
