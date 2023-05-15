@@ -156,11 +156,13 @@ class Player (object):
 
         self.draw(cx, cy, level)
 
-        self.actions = ['shoot']
+        self.actions = ['shoot', 'swing', 'dash']
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
+        self.showSelectedAction = False 
+        self.currentActionIcon = None
         
-        self.hasDash = False
+        self.hasDash = True
         self.canDash = True
         self.dashDistance = 75 + 25*self.dashMod
         self.dashSpeed = 1.5 + 0.5*self.dashMod
@@ -168,7 +170,7 @@ class Player (object):
         self.dashDelay = 240 - 30*self.dashMod
         self.dashCooldown = 0
         
-        self.hasSwing = False
+        self.hasSwing = True
         self.canSwing = True 
         self.attacking = False
         self.swingDelay = 240 - 30*self.swingMod
@@ -297,6 +299,21 @@ class Player (object):
             if bullet.loaded == False : 
                 self.bullets.remove(bullet)
     
+    def showSelectedItem(self):
+        if self.currentAction is not None and self.showSelectedAction:
+            if self.currentActionIcon is not None:
+                self.currentActionIcon.drawing.clear()
+            self.showSelectedAction = False
+            tempString = str(self.currentAction) + "Item"
+            self.currentActionIcon = Item(self.hitbox.centerX, self.hitbox.centerY+20, tempString)
+        if self.currentActionIcon != None:
+            if self.currentActionIcon.model.opacity <= 0.5:
+                self.currentActionIcon.drawing.clear()
+                self.currentActionIcon = None
+            else:
+                self.currentActionIcon.model.centerX, self.currentActionIcon.model.centerY = self.hitbox.centerX, self.hitbox.centerY+20
+                self.currentActionIcon.model.opacity -= 0.5
+
     def manageTimers(self): 
         if self.swingCooldown != 0:
            self.swingCooldown -= 1
@@ -327,13 +344,15 @@ class Player (object):
     def handleActionIndex(self, key): 
         if key == Keybinds.actionIndexDown : 
             self.currentActionIndex -= 1
+            self.showSelectedAction = True
         if key == Keybinds.actionIndexUp : 
             self.currentActionIndex += 1
+            self.showSelectedAction = True            
         
         if self.currentActionIndex > len(self.actions) - 1 : 
             self.currentActionIndex = 0
         if self.currentActionIndex < 0 : 
-            self.currentActionIndex = len(self.actions) - 1
+            self.currentActionIndex = len(self.actions) - 1      
     def handleOnKeys(self, keys): 
         for key in keys: 
             if self.canMove and self.isDashing == False:
@@ -351,6 +370,7 @@ class Player (object):
         self.dash()
         self.updatePlayer()
         self.currentAction = self.actions[self.currentActionIndex]
+        self.showSelectedItem()
         self.manageTimers()
     def handleMousePress(self, x, y): 
         if game.currentRoom.roomID != 0 : 
@@ -626,6 +646,7 @@ class HealthBar (object):
         self.middle.width = mapValue(character.health, 0, character.maxHealth, 0.1, 50) # 0.1 is the min width of the health bar (to prevent a rectangle with no width)
         self.drawing.centerX = character.hitbox.centerX
         self.drawing.bottom = character.hitbox.top - 5
+        self.drawing.toFront()
 
     def drawHealthBar(self, health, maxHealth, character):
         x = character.hitbox.centerX
@@ -639,7 +660,6 @@ class HealthBar (object):
 
     def clearHealthBar(self):
         self.drawing.clear()
-
 
 ##########################
 ###### ROOM CLASSES ######
@@ -855,7 +875,6 @@ def roundedRect(x, y, width, height, colour, outlineColour, outlineWidth):
     r1, r2
     )
     return RRect
-
 
 def buildWall(x, y, size, type): # h for horizontal, v for vertical
     if type == 'h': 
