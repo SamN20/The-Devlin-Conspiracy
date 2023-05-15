@@ -147,6 +147,7 @@ class CurrentRoomState(object):
             self.room.load()
         
             player.moveTo(self.room.exits[entrance][0], self.room.exits[entrance][1])
+            player.isDashing = False
             game.cover.opacity = 100 - self.attributes['lightLevel']*10
 
             game.cover.toFront()
@@ -197,6 +198,7 @@ class Player (object):
         self.isDashing = False
         self.dashDelay = 240 - 30*self.dashMod
         self.dashCooldown = 0
+        self.dashRange = Group()
         
         self.hasSwing = False
         self.canSwing = True 
@@ -253,13 +255,15 @@ class Player (object):
                 else:
                     angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY)
                     x, y = getPointInDir(self.hitbox.centerX, self.hitbox.centerY, angle, self.dashSpeed)
-                    if game.currentRoom.walls.hitsShape(self.hitbox) == True: 
+                    if game.currentRoom.thingsWithCollision.hitsShape(self.hitbox) == True: 
                         self.isDashing = False
                         self.dashCooldown = self.dashDelay
                         self.canDash = False
                         self.dashRange.clear()
                     else:
                         self.moveTo(x, y)
+            else:
+                self.dashRange.clear()
 
     def lookRotation(self, x, y): 
         angle = angleTo(self.hitbox.centerX, self.hitbox.centerY, x, y)
