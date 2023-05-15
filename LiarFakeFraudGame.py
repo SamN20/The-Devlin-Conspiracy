@@ -12,6 +12,7 @@ class GameState(object):
         self.animations = AnimationManager()
         self.titleScreen = Group()
         self.drawTitleScreen()
+        self.drawPauseMenu()
 
         self.worldList = ['tutorial']
         self.worldListIndex = 0 
@@ -66,6 +67,21 @@ class GameState(object):
         else: 
             self.animating = False
             self.animationComplete = True
+
+    def drawPauseMenu(self):
+        self.pauseMenu = Group()
+        self.pauseMenu.add(Rect(0, 0, 400, 400, fill = 'black', opacity = 50), 
+                           Label('PAUSED', 200, 200, size = 30, font = 'monospace', bold = True, fill = 'red', border = 'black', borderWidth = 1.5))
+        self.pauseMenu.visible = False
+
+    def pause(self): 
+        self.mode = 'PAUSED'
+        self.pauseMenu.visible = True
+        self.pauseMenu.toFront()
+
+    def unpause(self): 
+        self.mode = 'PLAYING'
+        self.pauseMenu.visible = False
 
     def handleOnStep(self): 
         self.cursor.centerX = self.cursorX
@@ -784,7 +800,13 @@ def onKeyHold(keys):
 def onKeyPress(key): 
     if 'PLAYING' in game.mode and game.currentRoom != None : 
         player.handleKeyPress(key)
-
+        if key == Keybinds.pause: 
+            game.pause()
+            print('paused')
+    elif game.mode == 'PAUSED' and key == Keybinds.pause: 
+        game.unpause()
+        print('unpaused')
+    
 ### debug ###
     if game.mode != 'TITLE SCREEN' :
         if key == 'left': 
