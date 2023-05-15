@@ -11,6 +11,8 @@ class GameState(object):
         self.currentRoom = None 
         self.animations = AnimationManager()
         self.titleScreen = Group()
+        self.drawTitleScreen()
+        self.drawPauseMenu()
 
         self.worldList = ['tutorial']
         self.worldListIndex = 0 
@@ -28,20 +30,30 @@ class GameState(object):
         self.cursorX = 200
         self.cursorY = 200
 
-        Sounds.Titlescreen.set_volume(0.5)
+        Sounds.Titlescreen.set_volume(0.2)
         Sounds.Titlescreen.play(loop = True)
+
+    def drawTitleScreen(self):
+        backgroundImage = Image('Images/Title-Screen.png', 0, 0, width = 400, height = 400)
+        backDrop = Rect(0, 18, 400, 62, fill = 'black', opacity = 30)
+        TitleText = Label('The Devlin Conspiracy', 200, 35, size = 30, font = 'monospace', bold = True, fill = 'red', border = 'black', borderWidth = 1.5)
+        SubText = Label('The Liar, The Fake, and The Fraud', 200, 65, size = 18, font = 'monospace', bold = True, fill = 'red', border = 'black', borderWidth = 1)
+        backDrop2 = Rect(45, 367, 309, 16, fill = 'black', opacity = 30)
+        ClickToStart = Label('Click Anywhere To Start Your Adventure', 200, 375, size = 13, font = 'monospace', bold = True, fill = 'red', border = 'black', borderWidth = 0.5)
+        self.titleScreen.add(backgroundImage, backDrop, TitleText, SubText, backDrop2, ClickToStart)
 
     def startGame(self): 
         self.animationComplete = False
         self.currentRoom = CurrentRoomState()
         game.currentRoom.thingsThatDamageNPCs.append([player.swing, 4, None])
         self.cover.opacity = 0
+        self.titleScreen.clear()
         self.mode = 'PLAYING'
         player.drawing.visible = True 
-        Sounds.Titlescreen.pause()
         game.currentRoom.loadNewRoom(TutorialRoom1, 'TUTORIAL SPAWN')
         
     def beginStartingAnimation(self): 
+        Sounds.Titlescreen.fadeout(6000)
         self.animating = True
 
     def animate(self): 
@@ -55,6 +67,21 @@ class GameState(object):
         else: 
             self.animating = False
             self.animationComplete = True
+
+    def drawPauseMenu(self):
+        self.pauseMenu = Group()
+        self.pauseMenu.add(Rect(0, 0, 400, 400, fill = 'black', opacity = 50), 
+                           Label('PAUSED', 200, 200, size = 30, font = 'monospace', bold = True, fill = 'red', border = 'black', borderWidth = 1.5))
+        self.pauseMenu.visible = False
+
+    def pause(self): 
+        self.mode = 'PAUSED'
+        self.pauseMenu.visible = True
+        self.pauseMenu.toFront()
+
+    def unpause(self): 
+        self.mode = 'PLAYING'
+        self.pauseMenu.visible = False
 
     def handleOnStep(self): 
         self.cursor.centerX = self.cursorX
@@ -130,8 +157,6 @@ class CurrentRoomState(object):
 
 class Player (object): 
     def __init__(self, cx, cy, level): 
-        self.draw(cx, cy, level)
-        
         self.moveMod = 0 
         self.shootMod = 0 
         self.swingMod = 0
@@ -145,11 +170,15 @@ class Player (object):
         self.maxHealth = 4 + level*4
         self.health = self.maxHealth
 
-        self.actions = [None]
+        self.draw(cx, cy, level)
+
+        self.actions = ['shoot', 'swing', 'dash']
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
+        self.showSelectedAction = False 
+        self.currentActionIcon = None
         
-        self.hasDash = False
+        self.hasDash = True
         self.canDash = True
         self.dashDistance = 75 + 25*self.dashMod
         self.dashSpeed = 1.5 + 0.5*self.dashMod
@@ -157,14 +186,14 @@ class Player (object):
         self.dashDelay = 240 - 30*self.dashMod
         self.dashCooldown = 0
         
-        self.hasSwing = False
+        self.hasSwing = True
         self.canSwing = True 
         self.attacking = False
         self.swingDelay = 240 - 30*self.swingMod
         self.swingCooldown = 0
         self.swing
         
-        self.hasShoot = False
+        self.hasShoot = True
         self.canShoot = True
         self.bullets = [ ]
         self.shootDelay = 180 - 30*self.shootMod
@@ -179,6 +208,7 @@ class Player (object):
         self.swing = Arc(cx, cy, 30*level, 30*level, -55, 10, fill = 'saddleBrown', opacity = 0)
         self.drawing = Group(self.sight, self.body, self.swing, self.hitbox)
         self.drawing.visible = False 
+        self.healthBar = HealthBar(self)
         
     def movement(self, key): 
         controls = {
@@ -285,6 +315,21 @@ class Player (object):
             if bullet.loaded == False : 
                 self.bullets.remove(bullet)
     
+    def showSelectedItem(self):
+        if self.currentAction is not None and self.showSelectedAction:
+            if self.currentActionIcon is not None:
+                self.currentActionIcon.drawing.clear()
+            self.showSelectedAction = False
+            tempString = str(self.currentAction) + "Item"
+            self.currentActionIcon = Item(self.hitbox.centerX, self.hitbox.centerY+20, tempString)
+        if self.currentActionIcon != None:
+            if self.currentActionIcon.model.opacity <= 0.5:
+                self.currentActionIcon.drawing.clear()
+                self.currentActionIcon = None
+            else:
+                self.currentActionIcon.model.centerX, self.currentActionIcon.model.centerY = self.hitbox.centerX, self.hitbox.centerY+20
+                self.currentActionIcon.model.opacity -= 0.5
+
     def manageTimers(self): 
         if self.swingCooldown != 0:
            self.swingCooldown -= 1
@@ -293,6 +338,7 @@ class Player (object):
         if self.dashCooldown != 0: 
             self.dashCooldown -= 1
     def updatePlayer(self): 
+        self.healthBar.updateHealthBar(self)
         if self.health <= 0:
             self.die()
         if self.shootCooldown == 0: 
@@ -314,13 +360,15 @@ class Player (object):
     def handleActionIndex(self, key): 
         if key == Keybinds.actionIndexDown : 
             self.currentActionIndex -= 1
+            self.showSelectedAction = True
         if key == Keybinds.actionIndexUp : 
             self.currentActionIndex += 1
+            self.showSelectedAction = True            
         
         if self.currentActionIndex > len(self.actions) - 1 : 
             self.currentActionIndex = 0
         if self.currentActionIndex < 0 : 
-            self.currentActionIndex = len(self.actions) - 1
+            self.currentActionIndex = len(self.actions) - 1      
     def handleOnKeys(self, keys): 
         for key in keys: 
             if self.canMove and self.isDashing == False:
@@ -338,6 +386,7 @@ class Player (object):
         self.dash()
         self.updatePlayer()
         self.currentAction = self.actions[self.currentActionIndex]
+        self.showSelectedItem()
         self.manageTimers()
     def handleMousePress(self, x, y): 
         if game.currentRoom.roomID != 0 : 
@@ -360,8 +409,7 @@ class Player (object):
 class NPC(object):
     
     def __init__(self, cx, cy, rotationAngle, level, sightDistance, colour):
-        self.draw(cx, cy, rotationAngle, sightDistance, colour, level)
-        
+              
         self.dx = 0
         self.dy = 0
         self.dr = 1
@@ -370,6 +418,8 @@ class NPC(object):
 
         self.maxHealth = 4 + level*4
         self.health = self.maxHealth
+
+        self.draw(cx, cy, rotationAngle, sightDistance, colour, level)
 
         self.moveMod = 0 
         self.shootMod = 0 
@@ -391,6 +441,7 @@ class NPC(object):
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
         self.swing = Arc(cx, cy, 40+10*level, 40+10*level, -55, 10, fill = 'saddleBrown')
         self.drawing = Group(self.sight, self.hitbox, self.swing, self.body)
+        self.healthBar = HealthBar(self)
 
     def sightLine(self):
         targetAngle = angleTo(self.drawing.centerX, self.drawing.centerY, player.body.centerX, player.body.centerY)
@@ -494,6 +545,7 @@ class NPC(object):
         # if self.dashCooldown != 0: 
         #     self.dashCooldown -= 1
     def updatePlayer(self): 
+        self.healthBar.updateHealthBar(self)
         if self.health <= 0:
             self.die()
         if self.swingCooldown == 0: 
@@ -510,6 +562,7 @@ class NPC(object):
     def clear(self):
         game.currentRoom.allNPCs.remove(self)
         self.drawing.clear()
+        self.healthBar.clearHealthBar()
 
     def handleOnStep(self):
         self.attemptMove()
@@ -595,9 +648,38 @@ class Projectile(object):
         if self.drawing.hitsShape(game.currentRoom.thingsWithCollision) == True : 
             self.clear()
 
-###########################
-###### CMU FUNCTIONS ######
-###########################
+##################################
+###### START OF GUI CLASSES ######
+##################################
+
+class HealthBar (object):
+    def __init__(self, character): # character is the player/NPC that the health bar is for
+        self.drawHealthBar(character.health, character.maxHealth, character)
+
+    def updateHealthBar(self, character):
+        if character.health != character.maxHealth:
+            self.drawing.visible = character.drawing.visible
+        self.middle.width = mapValue(character.health, 0, character.maxHealth, 0.1, 50) # 0.1 is the min width of the health bar (to prevent a rectangle with no width)
+        self.drawing.centerX = character.hitbox.centerX
+        self.drawing.bottom = character.hitbox.top - 5
+        self.drawing.toFront()
+
+    def drawHealthBar(self, health, maxHealth, character):
+        x = character.hitbox.centerX
+        y = character.hitbox.top - 5
+        width=mapValue(health, 0, maxHealth, 0, 50) # 50 is the max width of the health bar
+        self.outline = Rect(x, y, width+2, 5,  fill=None, border="black", borderWidth=1, align='bottom')
+        self.middle = Rect(self.outline.left+1, self.outline.centerY, width, 2,  fill="green", align='left')
+        self.drawing = Group(self.outline, self.middle)
+        self.drawing.opacity = 50
+        self.drawing.visible = False
+
+    def clearHealthBar(self):
+        self.drawing.clear()
+
+##########################
+###### ROOM CLASSES ######
+##########################
 
 class AnimationManager (object): 
     def __init__(self): 
@@ -647,17 +729,17 @@ class Room (object):
 
                 
         game.currentRoom.walls.clear() 
-        game.currentRoom.thingsWithCollision.clear()
+        game.currentRoom.thingsWithCollision.clear() 
         game.currentRoom.walls = self.walls 
         for wall in self.walls:
             game.currentRoom.thingsWithCollision.add(wall)
     
     def loadNPCs(self): 
         for enemy in self.npcList : 
-            self.allNPCs.append(NPC(enemy[0], enemy[1], enemy[2], enemy[3], enemy[4], enemy[5]))
+            self.allNPCs.append(NPC(enemy[0], enemy[1], enemy[2], enemy[3], enemy[4], enemy[5])) 
 
-        for enemy in game.currentRoom.allNPCs: 
-            enemy.clear()
+        for i in range(len(game.currentRoom.allNPCs)): 
+            game.currentRoom.allNPCs[0].clear()
         
         game.currentRoom.allNPCs = self.allNPCs
 
@@ -690,7 +772,7 @@ class TutorialRoom1 (Room):
     def __init__(self): 
         super().__init__()
         self.exits['TOP'][2] = TutorialRoom2
-        self.npcList = [[100, 100, 0, 0, 5, 'red']]
+        self.npcList = [[100, 100, 0, 1, 5, 'red'], [100, 300, 0, 1, 5, 'red']]
     
 class TutorialRoom2 (Room): 
     def __init__(self): 
@@ -714,33 +796,40 @@ class TutorialRoom4 (Room):
 ###########################
 
 def onKeyHold(keys):     
-    if 'MENU' not in game.mode and game.currentRoom != None : 
+    if 'PLAYING' in game.mode and game.currentRoom != None : 
         player.handleOnKeys(keys)
 def onKeyPress(key): 
-    if 'MENU' not in game.mode and game.currentRoom != None : 
+    if 'PLAYING' in game.mode and game.currentRoom != None : 
         player.handleKeyPress(key)
-
+        if key == Keybinds.pause: 
+            game.pause()
+            print('paused')
+    elif game.mode == 'PAUSED' and key == Keybinds.pause: 
+        game.unpause()
+        print('unpaused')
+    
 ### debug ###
-    if key == 'left': 
-        game.currentRoom.room.loadingZone('LEFT')
-    if key == 'right':
-        game.currentRoom.room.loadingZone('RIGHT')
-    if key == 'up':
-        game.currentRoom.room.loadingZone('TOP')
-    if key == 'down':
-        game.currentRoom.room.loadingZone('BOTTOM')
+    if game.mode != 'TITLE SCREEN' :
+        if key == 'left': 
+            game.currentRoom.room.loadingZone('LEFT')
+        if key == 'right':
+            game.currentRoom.room.loadingZone('RIGHT')
+        if key == 'up':
+            game.currentRoom.room.loadingZone('TOP')
+        if key == 'down':
+            game.currentRoom.room.loadingZone('BOTTOM')
 
 def onMouseMove(x, y): 
     game.handleMouseMove(x, y)
 def onMouseDrag(x, y): 
     game.handleMouseMove(x, y)
 def onMousePress(x, y): 
-    if game.currentRoom != None : 
+    if game.mode == 'PLAYING' and game.currentRoom != None :
         player.handleMousePress(x, y)
     if game.mode == 'TITLE SCREEN': 
         game.handleMousePress()
 def onStep(): 
-    if 'MENU' not in game.mode and game.currentRoom != None : 
+    if 'PLAYING' in game.mode and game.currentRoom != None : 
         player.handleOnStep() 
         game.currentRoom.handleOnStep() 
         for enemy in game.currentRoom.allNPCs:
@@ -777,6 +866,38 @@ def orientation(x1, y1, x2, y2, type): # Not realy used... sorry Jonah
 ##########################
 ###### MAP BUILDING ######
 ##########################
+
+def roundedRect(x, y, width, height, colour, outlineColour, outlineWidth):
+    RRect = Group()
+    if outlineColour != None:
+        g.outline = Group()
+        width -= 14
+        height -= 14
+        r1 = Rect(x, y, width+20, height, fill=outlineColour, align='center')
+        r2 = Rect(x, y, width, height+20, fill=outlineColour, align='center')
+        RRect.outline.add(
+        Circle(r2.left, r1.top, 10, fill=outlineColour),
+        Circle(r2.right, r1.top, 10, fill=outlineColour),
+        Circle(r2.left, r1.bottom, 10, fill=outlineColour),
+        Circle(r2.right, r1.bottom, 10, fill=outlineColour),
+        r1, r2
+        )
+        RRect.add(RRect.outline)
+        width += 13
+        height += 13
+
+    width -= 15
+    height -= 15
+    r1 = Rect(x, y, width+20, height, fill=colour, align='center')
+    r2 = Rect(x, y, width, height+20, fill=colour, align='center')
+    RRect.add(
+    Circle(r2.left, r1.top, 10, fill=colour),
+    Circle(r2.right, r1.top, 10, fill=colour),
+    Circle(r2.left, r1.bottom, 10, fill=colour),
+    Circle(r2.right, r1.bottom, 10, fill=colour),
+    r1, r2
+    )
+    return RRect
 
 def buildWall(x, y, size, type): # h for horizontal, v for vertical
     if type == 'h': 
