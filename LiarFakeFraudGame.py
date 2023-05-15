@@ -16,10 +16,20 @@ class GameState(object):
 
         self.worldList = ['tutorial']
         self.worldListIndex = 0 
-        self.roomList = {'tutorial': ['???', 0,  ],  # worldName : [ Display Name, intended Progression ID, ]
+        self.roomList = {'tutorial': ['???', 0],  # worldName : [ Display Name, intended Progression ID]
                          } 
         self.roomListIndex = 2
         
+        self.globalItemList = { 
+            'TutorialRoom4' : [True], 
+            'TutorialRoom6' : [True]
+        }
+
+        self.globalNPCList = { 
+            'TutorialRoom5' : [True, True], 
+            'TutorialRoom7' : [True, True]
+            }
+
         self.cover = Rect(0, 0, 400, 400, opacity = 0)
 
         self.animating = False
@@ -51,7 +61,9 @@ class GameState(object):
         self.mode = 'PLAYING'
         player.drawing.visible = True 
         game.currentRoom.loadNewRoom(TutorialRoom1, 'TUTORIAL SPAWN')
-        
+        Sounds.Tutorial.set_volume(0.1)
+        Sounds.Tutorial.play(loop = True)
+
     def beginStartingAnimation(self): 
         Sounds.Titlescreen.fadeout(6000)
         self.animating = True
@@ -120,7 +132,7 @@ class CurrentRoomState(object):
         self.room = TutorialRoom1()
         self.roomID = self.room.roomID
 
-        self.items = [ ]
+        self.allItems = [ ]
         self.allNPCs = [ ]
 
     def handleOnStep(self): 
@@ -172,13 +184,13 @@ class Player (object):
 
         self.draw(cx, cy, level)
 
-        self.actions = ['shoot', 'swing', 'dash']
+        self.actions = [None]
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
         self.showSelectedAction = False 
         self.currentActionIcon = None
         
-        self.hasDash = True
+        self.hasDash = False
         self.canDash = True
         self.dashDistance = 75 + 25*self.dashMod
         self.dashSpeed = 1.5 + 0.5*self.dashMod
@@ -186,14 +198,14 @@ class Player (object):
         self.dashDelay = 240 - 30*self.dashMod
         self.dashCooldown = 0
         
-        self.hasSwing = True
+        self.hasSwing = False
         self.canSwing = True 
         self.attacking = False
         self.swingDelay = 240 - 30*self.swingMod
         self.swingCooldown = 0
         self.swing
         
-        self.hasShoot = True
+        self.hasShoot = False
         self.canShoot = True
         self.bullets = [ ]
         self.shootDelay = 180 - 30*self.shootMod
@@ -202,7 +214,7 @@ class Player (object):
         self.coolDownTimerList = [self.swingCooldown, self.shootCooldown]
     
     def draw(self, cx, cy, level): 
-        self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'white', opacity = 25)
+        self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'white', opacity = 0)
         self.body = Circle(cx, cy, 7, fill = 'white', border = 'black')
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 0, align = 'center')
         self.swing = Arc(cx, cy, 30*level, 30*level, -55, 10, fill = 'saddleBrown', opacity = 0)
@@ -321,7 +333,7 @@ class Player (object):
                 self.currentActionIcon.drawing.clear()
             self.showSelectedAction = False
             tempString = str(self.currentAction) + "Item"
-            self.currentActionIcon = Item(self.hitbox.centerX, self.hitbox.centerY+20, tempString)
+            self.currentActionIcon = Item(self.hitbox.centerX, self.hitbox.centerY+20, tempString, None)
         if self.currentActionIcon != None:
             if self.currentActionIcon.model.opacity <= 0.5:
                 self.currentActionIcon.drawing.clear()
@@ -349,7 +361,7 @@ class Player (object):
             self.canDash = True
 
     def collect(self): 
-        for item in game.currentRoom.items: 
+        for item in game.currentRoom.allItems: 
             if distance(self.hitbox.centerX, self.hitbox.centerY, item.hitbox.centerX, item.hitbox.centerY) < 30: 
                 item.hasBeenCollected()
 
@@ -408,13 +420,15 @@ class Player (object):
                 
 class NPC(object):
     
-    def __init__(self, cx, cy, rotationAngle, level, sightDistance, colour):
-              
+    def __init__(self, cx, cy, rotationAngle, level, sightDistance, colour, index):
+       
         self.dx = 0
         self.dy = 0
         self.dr = 1
         self.speed = 0.5 # Could change based on level
         self.followPlayer = True
+        
+        self.index = index
 
         self.maxHealth = 4 + level*4
         self.health = self.maxHealth
@@ -557,6 +571,8 @@ class NPC(object):
 
     def die(self):
         # Can add a death sound ext here
+        game.globalNPCList[game.currentRoom.roomID][self.index-1] = False
+        
         self.clear()
 
     def clear(self):
@@ -582,8 +598,9 @@ class NPC(object):
 ##########################
 
 class Item (object): 
-    def __init__(self, cx, cy, type): 
+    def __init__(self, cx, cy, type, index): 
         self.itemType = type
+        self.index = index
         self.draw(cx, cy)
     def draw(self, cx, cy): 
         self.hitbox = Circle(cx, cy, 5, opacity = 0)
@@ -598,12 +615,16 @@ class Item (object):
         if self.itemType == 'shootItem': 
             self.model = Group(Line(cx, cy, cx+13, cy-13), Circle(cx+13, cy-13, 4, fill = 'red'))
             self.model.centerX, self.model.centerY = self.hitbox.centerX, self.hitbox.centerY
+        if self.itemType == 'flashlight': 
+            self.model = Group(Line(cx, cy, cx, cy+10, lineWidth = 3, fill = 'dimGrey'), Line(cx, cy, cx, cy-2, lineWidth = 3, fill = 'yellow'), 
+                               Arc(cx, cy, 20, 20, -45, 90, fill = 'yellow', opacity = 50))
         
         self.drawing = Group(self.hitbox, self.model)
 
     def hasBeenCollected(self): 
         self.clear()
-        if None in player.actions: 
+        game.globalItemList[game.currentRoom.roomID][self.index-1] = False
+        if None in player.actions and self.itemType != 'flashlight': 
             player.actions.remove(None)
         if self.itemType == 'dashItem' and player.hasDash == False: 
             player.hasDash = True
@@ -614,6 +635,8 @@ class Item (object):
         if self.itemType == 'shootItem' and player.hasShoot == False: 
             player.hasShoot = True
             player.actions.append('shoot')
+        if self.itemType == 'flashlight': 
+            player.sight.opacity = 25
     
     
     def clear(self): 
@@ -699,6 +722,9 @@ class Room (object):
         self.walls = Group()
         self.roomID = ' '
         
+        self.npcList = [ ]
+        self.itemList = [ ]
+
         self.allNPCs = [ ]
         self.allItems = [ ]
 
@@ -716,9 +742,7 @@ class Room (object):
         self.exitBlockers = {'TOP' : [0, 0, 400, 'h'], 
                              'BOTTOM' : [0, 390, 400, 'h'], 
                              'LEFT' : [0, 0, 400, 'v'], 
-                             'RIGHT' : [390, 0, 400, 'v']} # [TOP, BOTTOM, LEFT, RIGHT]
-        
-        self.npcList = [ ]
+                             'RIGHT' : [390, 0, 400, 'v']} 
         
     def loadWalls(self): 
         for label in self.exitLabels : 
@@ -736,16 +760,28 @@ class Room (object):
     
     def loadNPCs(self): 
         for enemy in self.npcList : 
-            self.allNPCs.append(NPC(enemy[0], enemy[1], enemy[2], enemy[3], enemy[4], enemy[5])) 
+            if game.globalNPCList[game.currentRoom.roomID][enemy[6]-1] : 
+                self.allNPCs.append(NPC(enemy[0], enemy[1], enemy[2], enemy[3], enemy[4], enemy[5], enemy[6]))
 
         for i in range(len(game.currentRoom.allNPCs)): 
             game.currentRoom.allNPCs[0].clear()
         
         game.currentRoom.allNPCs = self.allNPCs
-
+    
+    def loadItems(self):
+        for item in self.itemList : 
+            if game.globalItemList[game.currentRoom.roomID][item[3]-1] : 
+                self.allItems.append(Item(item[0], item[1], item[2], item[3]))
+        
+        for i in range(len(game.currentRoom.allItems)): 
+            game.currentRoom.allItems[0].clear()
+        
+        game.currentRoom.allItems = self.allItems
+    
     def load(self): 
         self.loadWalls()
         self.loadNPCs()
+        self.loadItems()
     
     def loadingZone(self, direction): 
         zone = self.exits[direction][2]
@@ -771,25 +807,62 @@ class TestRoom (object):
 class TutorialRoom1 (Room): 
     def __init__(self): 
         super().__init__()
+        self.roomID = 'TutorialRoom1'
         self.exits['TOP'][2] = TutorialRoom2
-        self.npcList = [[100, 100, 0, 1, 5, 'red'], [100, 300, 0, 1, 5, 'red']]
+        self.wallList.append([200, 200, 50, 'h'])
     
 class TutorialRoom2 (Room): 
     def __init__(self): 
         super().__init__()
+        game.currentRoom.roomID = 'TutorialRoom2'
         self.exits['BOTTOM'][2] = TutorialRoom1
         self.exits['RIGHT'][2] = TutorialRoom3
         
 class TutorialRoom3 (Room): 
     def __init__(self): 
         super().__init__()
+        game.currentRoom.roomID = 'TutorialRoom3'
         self.exits['LEFT'][2] = TutorialRoom2
         self.exits['RIGHT'][2] = TutorialRoom4
 
 class TutorialRoom4 (Room): 
     def __init__(self): 
         super().__init__() 
+        game.currentRoom.roomID = 'TutorialRoom4'
         self.exits['LEFT'][2] = TutorialRoom3
+        self.exits['TOP'][2] = TutorialRoom5
+        self.itemList.append([100, 200, 'flashlight', 1])
+
+class TutorialRoom5 (Room): 
+    def __init__(self): 
+        super().__init__()
+        game.currentRoom.roomID = 'TutorialRoom5'
+        self.exits['BOTTOM'][2] = TutorialRoom4
+        self.exits['TOP'][2] = TutorialRoom6
+        self.npcList.append([200, 200, 0, 0, 0, 'grey', 1])
+
+class TutorialRoom6 (Room): 
+    def __init__(self): 
+        super().__init__() 
+        game.currentRoom.roomID = 'TutorialRoom6'
+        self.exits['BOTTOM'][2] = TutorialRoom5
+        self.exits['LEFT'][2] = TutorialRoom7
+        self.itemList.append([200, 200, 'dashItem', 1])
+
+class TutorialRoom7 (Room): 
+    def __init__(self): 
+        super().__init__() 
+        game.currentRoom.roomID = 'TutorialRoom7'
+        self.exits['RIGHT'][2] = TutorialRoom6
+        self.exits['LEFT'][2] = TutorialRoom8
+        self.npcList.append([200, 100, 0, 0, 0, 'grey', 1])
+        self.npcList.append([200, 300, 0, 0, 0, 'grey', 2])
+
+class TutorialRoom8 (Room): 
+    def __init__(self): 
+        super().__init__() 
+        game.currentRoom.roomID = 'TutorialRoom8'
+        self.exits['RIGHT'][2] = TutorialRoom7
 
 ###########################
 ###### CMU FUNCTIONS ######
@@ -809,7 +882,7 @@ def onKeyPress(key):
         print('unpaused')
     
 ### debug ###
-    if game.mode != 'TITLE SCREEN' :
+    if game.mode != 'TITLE SCREEN': 
         if key == 'left': 
             game.currentRoom.room.loadingZone('LEFT')
         if key == 'right':
@@ -818,6 +891,8 @@ def onKeyPress(key):
             game.currentRoom.room.loadingZone('TOP')
         if key == 'down':
             game.currentRoom.room.loadingZone('BOTTOM')
+        if key == 'p': 
+            print(game.currentRoom.roomID)
 
 def onMouseMove(x, y): 
     game.handleMouseMove(x, y)
