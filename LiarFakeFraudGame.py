@@ -779,10 +779,10 @@ class TutorialRoom4 (Room):
 ###########################
 
 def onKeyHold(keys):     
-    if 'MENU' not in game.mode and game.currentRoom != None : 
+    if 'PLAYING' in game.mode and game.currentRoom != None : 
         player.handleOnKeys(keys)
 def onKeyPress(key): 
-    if 'MENU' not in game.mode and game.currentRoom != None : 
+    if 'PLAYING' in game.mode and game.currentRoom != None : 
         player.handleKeyPress(key)
 
 ### debug ###
@@ -801,12 +801,12 @@ def onMouseMove(x, y):
 def onMouseDrag(x, y): 
     game.handleMouseMove(x, y)
 def onMousePress(x, y): 
-    if game.currentRoom != None : 
+    if game.mode == 'PLAYING' and game.currentRoom != None :
         player.handleMousePress(x, y)
     if game.mode == 'TITLE SCREEN': 
         game.handleMousePress()
 def onStep(): 
-    if 'MENU' not in game.mode and game.currentRoom != None : 
+    if 'PLAYING' in game.mode and game.currentRoom != None : 
         player.handleOnStep() 
         game.currentRoom.handleOnStep() 
         for enemy in game.currentRoom.allNPCs:
