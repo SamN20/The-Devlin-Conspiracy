@@ -185,7 +185,7 @@ class Player (object):
 
         self.draw(cx, cy, level)
 
-        self.actions = ['shoot']
+        self.actions = []
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
         self.showSelectedAction = False 
@@ -207,7 +207,7 @@ class Player (object):
         self.swingCooldown = 0
         self.swing
         
-        self.hasShoot = True
+        self.hasShoot = False
         self.canShoot = True
         self.bullets = [ ]
         self.shootDelay = 180 - 30*self.shootMod
