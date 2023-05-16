@@ -194,7 +194,7 @@ class Player (object):
         self.hasDash = False
         self.canDash = True
         self.dashDistance = 75 + 25*self.dashMod
-        self.dashSpeed = 1.8 + 0.5*self.dashMod
+        self.dashSpeed = 2 + 0.5*self.dashMod
         self.isDashing = False
         self.dashDelay = 240 - 30*self.dashMod
         self.dashCooldown = 0
