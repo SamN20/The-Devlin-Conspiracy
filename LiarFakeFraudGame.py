@@ -61,7 +61,7 @@ class GameState(object):
         self.mode = 'PLAYING'
         player.drawing.visible = True 
         game.currentRoom.loadNewRoom(TutorialRoom1, 'TUTORIAL SPAWN')
-        Sounds.Tutorial.set_volume(0.1)
+        Sounds.Tutorial.set_volume(0.2)
         Sounds.Tutorial.play(loop = True)
 
     def beginStartingAnimation(self): 
@@ -185,7 +185,7 @@ class Player (object):
 
         self.draw(cx, cy, level)
 
-        self.actions = [None]
+        self.actions = ['shoot']
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
         self.showSelectedAction = False 
@@ -194,7 +194,7 @@ class Player (object):
         self.hasDash = False
         self.canDash = True
         self.dashDistance = 75 + 25*self.dashMod
-        self.dashSpeed = 1.5 + 0.5*self.dashMod
+        self.dashSpeed = 1.8 + 0.5*self.dashMod
         self.isDashing = False
         self.dashDelay = 240 - 30*self.dashMod
         self.dashCooldown = 0
@@ -207,7 +207,7 @@ class Player (object):
         self.swingCooldown = 0
         self.swing
         
-        self.hasShoot = False
+        self.hasShoot = True
         self.canShoot = True
         self.bullets = [ ]
         self.shootDelay = 180 - 30*self.shootMod
@@ -285,16 +285,18 @@ class Player (object):
                 self.drawing.centerY += dy
 
     def takesDamage(self):
-            for hurtyItem in [item for item in game.currentRoom.thingsThatDamagePlayer if item[0].opacity != 0]:
-                if self.hitbox.hitsShape(hurtyItem[0]):
-                    if self.justTookDamageLastCycle == False:
-                        self.health -= hurtyItem[1]
-                        print(self.health)
-                        self.justTookDamageLastCycle = True
-                        if hurtyItem[2] != None:
-                            hurtyItem[2].clear()
-                else:
-                    self.justTookDamageLastCycle = False
+        for hurtyItem in [item for item in game.currentRoom.thingsThatDamagePlayer if item[0].opacity != 0]:
+            if self.hitbox.hitsShape(hurtyItem[0]):
+                if self.justTookDamageLastCycle == False:
+                    self.health -= hurtyItem[1]
+                    print(self.health)
+                    self.justTookDamageLastCycle = True
+                    if hurtyItem[2] != None:
+                        hurtyItem[2].clear()
+        if any([item[0].hitsShape(self.hitbox) for item in game.currentRoom.thingsThatDamagePlayer if item[0].opacity != 0]):
+            self.justTookDamageLastCycle = True
+        else:
+            self.justTookDamageLastCycle = False
 
     def swingAttack(self): 
         if self.canSwing == True and player.hasSwing == True:
@@ -529,8 +531,10 @@ class NPC(object):
                     self.justTookDamageLastCycle = True
                     if hurtyItem[2] != None:
                         hurtyItem[2].clear()
-            else:
-                self.justTookDamageLastCycle = False
+        if any([item[0].hitsShape(self.hitbox) for item in game.currentRoom.thingsThatDamagePlayer if item[0].opacity != 0]):
+            self.justTookDamageLastCycle = True
+        else:
+            self.justTookDamageLastCycle = False
 
     def attackLogic(self):
         if self.sight.hitsShape(player.hitbox):
@@ -661,14 +665,9 @@ class Projectile(object):
     def clear(self): 
         self.loaded = False
         self.drawing.clear()
-        tempList = []
-        for sublist in game.currentRoom.thingsThatDamageNPCs:
-            if self not in sublist:
-                tempList.append(sublist)
-        if self in [item for sublist in game.currentRoom.thingsThatDamageNPCs for item in sublist]:
-            game.currentRoom.thingsThatDamageNPCs = tempList
-        if self in [item for sublist in game.currentRoom.thingsThatDamagePlayer for item in sublist]:
-            game.currentRoom.thingsThatDamagePlayer = tempList
+        game.currentRoom.thingsThatDamageNPCs = [sublist for sublist in game.currentRoom.thingsThatDamageNPCs if self not in sublist]
+        game.currentRoom.thingsThatDamagePlayer = [sublist for sublist in game.currentRoom.thingsThatDamagePlayer if self not in sublist]
+
     def handleOnStep(self): 
         if self.drawing.centerX > 810 or self.drawing.centerX < -10 or self.drawing.centerY > 610 or self.drawing.centerY < -10 : 
             self.clear()
