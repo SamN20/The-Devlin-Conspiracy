@@ -879,10 +879,8 @@ def onKeyPress(key):
         player.handleKeyPress(key)
         if key == Keybinds.pause: 
             game.pause()
-            print('paused')
     elif game.mode == 'PAUSED' and key == Keybinds.pause: 
         game.unpause()
-        print('unpaused')
     
 ### debug ###
     if game.mode != 'TITLE SCREEN': 
