@@ -134,13 +134,15 @@ class CurrentRoomState(object):
 
         self.allItems = [ ]
         self.allNPCs = [ ]
+        self.drawing = Group()
 
     def handleOnStep(self): 
         self.loadingZoneLogic()
 
     def loadNewRoom(self, newRoom, entrance): # (class of the room to load, which direction its getting loaded from)
-        if newRoom != None: 
+        if newRoom != None:
             self.walls.clear()
+            self.drawing.clear()
             self.room = newRoom()
             for attr in self.attributes: 
                 self.attributes[attr] = self.room.attributes[attr]
@@ -183,9 +185,11 @@ class Player (object):
         self.maxHealth = 4 + level*4
         self.health = self.maxHealth
 
+        self.savePointRoom = None
+
         self.draw(cx, cy, level)
 
-        self.actions = []
+        self.actions = [None]
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
         self.showSelectedAction = False 
@@ -372,8 +376,10 @@ class Player (object):
                 item.hasBeenCollected()
 
     def die(self):
-        # Not sure what we want to happen when the player is dead
         print('player is dead')
+        game.currentRoom.loadNewRoom(self.savePointRoom, 'SAVE POINT')
+        self.health = self.maxHealth
+        
 
     def handleActionIndex(self, key): 
         if key == Keybinds.actionIndexDown : 
@@ -731,13 +737,16 @@ class Room (object):
         self.allNPCs = [ ]
         self.allItems = [ ]
 
+        self.drawing = Group()
+
         self.exitLabels = ['TOP', 'BOTTOM', 'LEFT', 'RIGHT']
-        self.exits = { # Direction : spawnX, spawnY, 
+        self.exits = { # Direction : spawnX, spawnY, RoomClass (dont set here)
             'TOP' : [200, 395, None], 
             'BOTTOM' : [200, 5, None], 
             'LEFT' : [395, 200, None], 
             'RIGHT' : [5, 200, None], 
-            'TUTORIAL SPAWN' : [200, 350, None] 
+            'TUTORIAL SPAWN' : [200, 350, None],
+            'SAVE POINT' : [200, 200, None]
             }
         self.wallList = [[0, 0, 125, 'h'], [275, 0, 150, 'h'], [0, 390, 125, 'h'], [275, 390, 150, 'h'], 
                          [390, 0, 125, 'v'], [390, 275, 125, 'v'], [0, 0, 125, 'v'], [0, 275, 125, 'v']]
@@ -782,6 +791,7 @@ class Room (object):
         game.currentRoom.allItems = self.allItems
     
     def load(self): 
+        game.currentRoom.drawing = self.drawing
         self.loadWalls()
         self.loadNPCs()
         self.loadItems()
@@ -812,6 +822,7 @@ class TutorialRoom1 (Room):
         super().__init__()
         self.roomID = 'TutorialRoom1'
         self.exits['TOP'][2] = TutorialRoom2
+        self.exits['BOTTOM'][2] = TempSaveRoom
         self.wallList.append([200, 200, 50, 'h'])
     
 class TutorialRoom2 (Room): 
@@ -866,6 +877,23 @@ class TutorialRoom8 (Room):
         super().__init__() 
         game.currentRoom.roomID = 'TutorialRoom8'
         self.exits['RIGHT'][2] = TutorialRoom7
+        self.exits['TOP'][2] = EndOfTutorialSaveRoom
+
+class SaveRoom (Room):
+    def __init__(self):
+        super().__init__()
+        self.draw()
+        player.savePointRoom = self.__class__
+
+    def draw(self):
+        self.savePoint = Group(Circle(200, 200, 10, fill = 'green'), Circle(200, 200, 5, fill = 'black'))
+        self.drawing = Group(self.savePoint)
+
+class EndOfTutorialSaveRoom (SaveRoom):
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'EOfTSR'
+        self.exits['BOTTOM'][2] = TutorialRoom8
 
 ###########################
 ###### CMU FUNCTIONS ######
