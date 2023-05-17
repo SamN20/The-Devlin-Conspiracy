@@ -89,6 +89,7 @@ class GameState(object):
 
     def pause(self): 
         self.mode = 'PAUSED'
+        Sounds.pauseMenu.play()
         self.pauseMenu.visible = True
         self.pauseMenu.toFront()
 
@@ -137,12 +138,15 @@ class CurrentRoomState(object):
         self.allNPCs = [ ]
         self.allDoors = [ ]
 
+        self.drawing = Group()
+
     def handleOnStep(self): 
         self.loadingZoneLogic()
 
     def loadNewRoom(self, newRoom, entrance): # (class of the room to load, which direction its getting loaded from)
-        if newRoom != None: 
+        if newRoom != None:
             self.walls.clear()
+            self.drawing.clear()
             self.room = newRoom()
             for attr in self.attributes: 
                 self.attributes[attr] = self.room.attributes[attr]
@@ -185,6 +189,8 @@ class Player (object):
         self.maxHealth = 4 + level*4
         self.health = self.maxHealth
 
+        self.savePointRoom = None
+
         self.draw(cx, cy, level)
 
         self.actions = [None]
@@ -226,6 +232,9 @@ class Player (object):
         self.drawing = Group(self.sight, self.body, self.swing, self.hitbox)
         self.drawing.visible = False 
         self.healthBar = HealthBar(self)
+        self.deathSubText = Label('Do better this time', 200, 150, size = 20, fill = 'red')
+        self.deathText = Group(Rect(0, 0, 400, 400, fill='darkGray', opacity = 80) , Label('You Died Bruh', 200, 100, size = 30, fill = 'red'), self.deathSubText, Label('Click anywhere to continue', 200, 300, size = 15, fill = 'red'))
+        self.deathText.visible = False
         
     def movement(self, key): 
         controls = {
@@ -380,8 +389,16 @@ class Player (object):
                 door.unlock()
 
     def die(self):
-        # Not sure what we want to happen when the player is dead
         print('player is dead')
+        game.mode = 'DEAD'
+        if self.savePointRoom is not None:
+            game.currentRoom.loadNewRoom(self.savePointRoom, 'SAVE POINT')
+            self.deathSubText.value = 'Loading from last save point...'
+        else:
+            game.currentRoom.loadNewRoom(TutorialRoom1, 'TUTORIAL SPAWN')
+            self.deathSubText.value = 'Do better this time!'
+        self.deathText.visible = True
+        self.health = self.maxHealth
 
     def handleActionIndex(self, key): 
         if key == Keybinds.actionIndexDown : 
@@ -416,7 +433,10 @@ class Player (object):
         self.showSelectedItem()
         self.manageTimers()
     def handleMousePress(self, x, y): 
-        if game.currentRoom.roomID != 0 : 
+        if game.mode == 'DEAD':
+            self.deathText.visible = False
+            game.mode = 'PLAYING'
+        elif game.currentRoom.roomID != 0 : 
             if self.currentAction == 'swing': 
                 self.swingAttack()
                 
@@ -427,6 +447,7 @@ class Player (object):
             if self.currentAction == 'dash' and self.isDashing == False and self.canDash == True and self.hasDash == True:
                 self.dashToX, self.dashToY = self.getDashDestination()
                 self.isDashing = True
+                Sounds.dash.play()
                 self.dashRange = Group(Line(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY, fill = 'blue', opacity = 25))
 
 ################################
@@ -589,7 +610,6 @@ class NPC(object):
     def die(self):
         # Can add a death sound ext here
         game.globalNPCList[game.currentRoom.roomID][self.index-1] = False
-        
         self.clear()
 
     def clear(self):
@@ -788,13 +808,16 @@ class Room (object):
         self.allItems = [ ]
         self.allDoors = [ ]
 
+        self.drawing = Group()
+
         self.exitLabels = ['TOP', 'BOTTOM', 'LEFT', 'RIGHT']
-        self.exits = { # Direction : spawnX, spawnY, 
+        self.exits = { # Direction : spawnX, spawnY, RoomClass (dont set here)
             'TOP' : [200, 395, None], 
             'BOTTOM' : [200, 5, None], 
             'LEFT' : [395, 200, None], 
             'RIGHT' : [5, 200, None], 
-            'TUTORIAL SPAWN' : [200, 350, None] 
+            'TUTORIAL SPAWN' : [200, 350, None],
+            'SAVE POINT' : [200, 200, None]
             }
         self.wallList = [[0, 0, 125, 'h'], [275, 0, 150, 'h'], [0, 390, 125, 'h'], [275, 390, 150, 'h'], 
                          [390, 0, 125, 'v'], [390, 275, 125, 'v'], [0, 0, 125, 'v'], [0, 275, 125, 'v']]
@@ -851,6 +874,7 @@ class Room (object):
             game.currentRoom.thingsWithCollision.add(door.drawing)
 
     def load(self): 
+        game.currentRoom.drawing = self.drawing
         self.loadWalls()
         self.loadNPCs()
         self.loadItems()
@@ -935,6 +959,46 @@ class TutorialRoom8 (Room):
         super().__init__() 
         game.currentRoom.roomID = 'TutorialRoom8'
         self.exits['RIGHT'][2] = TutorialRoom7
+        self.exits['TOP'][2] = EndOfTutorialSaveRoom
+
+class SaveRoom (Room):
+    def __init__(self):
+        super().__init__()
+        self.savingMessage = [
+            ["Saving progress... because real life doesn't", "come with a 'rewind' button. Cherish this privilege!"],
+            ["Save Station: Unmask the secrets, but don't", "let your progress become another layer of deception!"],
+            ["Save Room: A refuge from the tangled web of", "conspiracies. Trust no one, except the save button!"],
+            ["Preserve your truth-seeking journey here.", "The lies may run deep, but your progress stays untainted!"],
+            ["Saving... Shield your progress from the shadowy whispers", "of deception. Unravel the conspiracy with confidence!"],
+            ["Save Point: Leave no stone unturned, no deceit unnoticed.", "Your progress is a beacon of truth amidst the lies!"],
+            ["Save Zone: Where the conspiracies take a break and", "have a cup of tea. Just don't spill it on the evidence!"],
+            ["Welcome to the Save Lair, where frauds and fakes", "take a timeout to practice their poker faces."],
+            ["Saving... because in a world of lies and cheats, we've got", "your back! Your secret's safe with us... probably."],
+            ["Save Zone: Where the truth lies...", "conveniently saved for your convenience!"],
+            ["Saving progress: Because even conspiracies need a", "coffee break. Time to refold those tinfoil hats!"],
+            ["Saving... because even the most elaborate deceptions", "need occasional backup plans. We've got you covered!"],
+            ["Save your progress and remember,", "even heroes need bathroom breaks!"]
+            ]
+        self.draw()
+        player.savePointRoom = self.__class__
+        if game.mode == 'PLAYING':
+            Sounds.saveGame.play()
+
+    def draw(self):
+        floor = Image('Images/Save-Room.png', 10, 5, width = 380, height = 380, opacity = 10)
+        text = self.savingMessage[randrange(0, len(self.savingMessage))]
+        text1 = text[0]
+        text2 = text[1]
+        self.savePointText = Group(Label(text1, 200, 190, size = 15, fill = 'slateGray', borderWidth = 0.5), Label(text2, 200, 210, size = 15, fill = 'slateGray'))
+        self.savePointText.centerX, self.savePointText.centerY = 200, 200
+        self.drawing = Group(floor, self.savePointText)
+        
+
+class EndOfTutorialSaveRoom (SaveRoom):
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'EOfTSR'
+        self.exits['BOTTOM'][2] = TutorialRoom8
 
 ###########################
 ###### CMU FUNCTIONS ######
@@ -969,7 +1033,7 @@ def onMouseMove(x, y):
 def onMouseDrag(x, y): 
     game.handleMouseMove(x, y)
 def onMousePress(x, y): 
-    if game.mode == 'PLAYING' and game.currentRoom != None :
+    if (game.mode == 'PLAYING' or game.mode == 'DEAD')  and game.currentRoom != None :
         player.handleMousePress(x, y)
     if game.mode == 'TITLE SCREEN': 
         game.handleMousePress()
