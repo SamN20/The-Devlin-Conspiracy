@@ -1122,14 +1122,4 @@ def buildWall(x, y, size, type): # h for horizontal, v for vertical
 game = GameState()
 player = Player(200, 300, 5)
 
-# enemy1 = NPC(50, 50, 0, 0, 5, 'red')
-# enemy2 = NPC(300, 300, 0, 1, 5, 'red')
-# enemy2.hasSwing = True
-# game.room.allNPCs.append(enemy1)
-# game.room.allNPCs.append(enemy2)
-
-# for i in range(1):
-#     e = NPC(10+i*50, 10+i*50, 0, 0, 5, 'red')
-#     game.currentRoom.allNPCs.append(e)
-
 cmu_graphics.run()
