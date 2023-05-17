@@ -29,7 +29,8 @@ class GameState(object):
             'TutorialRoom5' : [True, True], 
             'TutorialRoom7' : [True, True]
             }
-
+        self.globalDoorList = { 
+        }
         self.cover = Rect(0, 0, 400, 400, opacity = 0)
 
         self.animating = False
@@ -134,6 +135,7 @@ class CurrentRoomState(object):
 
         self.allItems = [ ]
         self.allNPCs = [ ]
+        self.allDoors = [ ]
 
     def handleOnStep(self): 
         self.loadingZoneLogic()
@@ -185,7 +187,7 @@ class Player (object):
 
         self.draw(cx, cy, level)
 
-        self.actions = ['shoot']
+        self.actions = [None]
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
         self.showSelectedAction = False 
@@ -194,7 +196,7 @@ class Player (object):
         self.hasDash = False
         self.canDash = True
         self.dashDistance = 75 + 25*self.dashMod
-        self.dashSpeed = 1.8 + 0.5*self.dashMod
+        self.dashSpeed = 2 + 0.5*self.dashMod
         self.isDashing = False
         self.dashDelay = 240 - 30*self.dashMod
         self.dashCooldown = 0
@@ -207,14 +209,15 @@ class Player (object):
         self.swingCooldown = 0
         self.swing
         
-        self.hasShoot = True
+        self.hasShoot = False
         self.canShoot = True
         self.bullets = [ ]
         self.shootDelay = 180 - 30*self.shootMod
-        self.shootCooldown = 0
+        self.shootCooldown = 0    
 
-        self.coolDownTimerList = [self.swingCooldown, self.shootCooldown]
-    
+        self.obtainedKeys = 0
+        self.obtainedSpecialKeys = [ ]
+
     def draw(self, cx, cy, level): 
         self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'white', opacity = 0)
         self.body = Circle(cx, cy, 7, fill = 'white', border = 'black')
@@ -339,7 +342,7 @@ class Player (object):
                 self.currentActionIcon.drawing.clear()
             self.showSelectedAction = False
             tempString = str(self.currentAction) + "Item"
-            self.currentActionIcon = Item(self.hitbox.centerX, self.hitbox.centerY+20, tempString, None)
+            self.currentActionIcon = Item(self.hitbox.centerX, self.hitbox.centerY+20, tempString, None, None)
         if self.currentActionIcon != None:
             if self.currentActionIcon.model.opacity <= 0.5:
                 self.currentActionIcon.drawing.clear()
@@ -371,6 +374,11 @@ class Player (object):
             if distance(self.hitbox.centerX, self.hitbox.centerY, item.hitbox.centerX, item.hitbox.centerY) < 30: 
                 item.hasBeenCollected()
 
+    def unlockDoor(self): 
+        for door in game.currentRoom.allDoors : 
+            if distance(self.hitbox.centerX, self.hitbox.centerY, door.drawing.centerX, door.drawing.centerY) < 30: 
+                door.unlock()
+
     def die(self):
         # Not sure what we want to happen when the player is dead
         print('player is dead')
@@ -395,6 +403,7 @@ class Player (object):
         self.handleActionIndex(key)
         if key == Keybinds.collect: 
             self.collect()
+            self.unlockDoor()
     def handleOnStep(self): 
         self.lookRotation(game.cursorX, game.cursorY)
         self.collision()
@@ -606,9 +615,11 @@ class NPC(object):
 ##########################
 
 class Item (object): 
-    def __init__(self, cx, cy, type, index): 
+    def __init__(self, cx, cy, type, index, colour): 
         self.itemType = type
         self.index = index
+        self.colour = colour
+        self.playerUpgrades = ['dashItem', 'swingItem', 'shootItem']
         self.draw(cx, cy)
     def draw(self, cx, cy): 
         self.hitbox = Circle(cx, cy, 5, opacity = 0)
@@ -626,13 +637,19 @@ class Item (object):
         if self.itemType == 'flashlight': 
             self.model = Group(Line(cx, cy, cx, cy+10, lineWidth = 3, fill = 'dimGrey'), Line(cx, cy, cx, cy-2, lineWidth = 3, fill = 'yellow'), 
                                Arc(cx, cy, 20, 20, -45, 90, fill = 'yellow', opacity = 50))
+        if self.itemType == 'keyItem' : 
+            self.model = Group(Circle(cx, cy, 5, border = 'gold', fill = None, borderWidth = 2), Line(cx, cy-5, cx, cy-15, fill = 'gold'), 
+                Line(cx, cy-15, cx+5, cy-15, fill = 'gold'), Line(cx, cy-10, cx+5, cy-10, fill = 'gold'))
+        if self.itemType == 'specialKeyItem': 
+            self.model = Group(Circle(cx, cy, 5, border = self.colour, fill = None, borderWidth = 2), Line(cx, cy-5, cx, cy-15, fill = self.colour), 
+                Line(cx, cy-15, cx+5, cy-15, fill = self.colour), Line(cx, cy-10, cx+5, cy-10, fill = self.colour)) 
         
         self.drawing = Group(self.hitbox, self.model)
 
     def hasBeenCollected(self): 
         self.clear()
         game.globalItemList[game.currentRoom.roomID][self.index-1] = False
-        if None in player.actions and self.itemType != 'flashlight': 
+        if None in player.actions and self.itemType in self.playerUpgrades: 
             player.actions.remove(None)
         if self.itemType == 'dashItem' and player.hasDash == False: 
             player.hasDash = True
@@ -645,10 +662,48 @@ class Item (object):
             player.actions.append('shoot')
         if self.itemType == 'flashlight': 
             player.sight.opacity = 25
+        if self.itemType == 'keyItem' : 
+            player.obtainedKeys += 1
+        if self.itemType == 'specialKeyItem' : 
+            player.obtainedSpecialKeys.append(self.colour)
     
     
     def clear(self): 
         self.drawing.clear()
+
+class Obstacle (object): 
+    def __init__(self, index, colour): 
+        self.index = index
+        self.colour = colour
+        self.drawing = Group()
+    def clear(self): 
+        self.drawing.clear()
+        
+
+class Door (Obstacle) : 
+    def __init__(self, cx, cy, type, index, colour, direction):
+        super().__init__(index, colour)
+        self.type = type
+        self.draw(cx, cy, direction)
+    def draw(self, cx, cy, direction): 
+        door = buildWall(0, 0, 150, direction)
+        door.height -= 2
+        if self.type == 'NORMAL': 
+            door.fill = 'grey'
+        if self.type == 'SPECIAL': 
+            door.fill = self.colour
+            
+        door.centerX, door.centerY = cx, cy
+        self.drawing = Group(door)
+    def unlock(self): 
+        if self.type == 'NORMAL': 
+            player.obtainedKeys -= 1 
+        if self.type == 'SPECIAL': 
+            if self.colour in player.obtainedSpecialKeys: 
+                player.obtainedSpecialKeys.remove(self.colour)
+        
+        game.globalDoorList[game.currentRoom.roomID][self.index-1] = False
+        self.clear()
 
 class Projectile(object): 
     def __init__(self, cx, cy, angle, colour):
@@ -669,7 +724,7 @@ class Projectile(object):
         game.currentRoom.thingsThatDamagePlayer = [sublist for sublist in game.currentRoom.thingsThatDamagePlayer if self not in sublist]
 
     def handleOnStep(self): 
-        if self.drawing.centerX > 810 or self.drawing.centerX < -10 or self.drawing.centerY > 610 or self.drawing.centerY < -10 : 
+        if self.drawing.centerX > 410 or self.drawing.centerX < -10 or self.drawing.centerY > 410 or self.drawing.centerY < -10 : 
             self.clear()
         if self.drawing.hitsShape(game.currentRoom.thingsWithCollision) == True : 
             self.clear()
@@ -727,9 +782,11 @@ class Room (object):
         
         self.npcList = [ ]
         self.itemList = [ ]
+        self.doorList = [ ]
 
         self.allNPCs = [ ]
         self.allItems = [ ]
+        self.allDoors = [ ]
 
         self.exitLabels = ['TOP', 'BOTTOM', 'LEFT', 'RIGHT']
         self.exits = { # Direction : spawnX, spawnY, 
@@ -774,17 +831,30 @@ class Room (object):
     def loadItems(self):
         for item in self.itemList : 
             if game.globalItemList[game.currentRoom.roomID][item[3]-1] : 
-                self.allItems.append(Item(item[0], item[1], item[2], item[3]))
+                self.allItems.append(Item(item[0], item[1], item[2], item[3], item[4]))
         
         for i in range(len(game.currentRoom.allItems)): 
             game.currentRoom.allItems[0].clear()
         
         game.currentRoom.allItems = self.allItems
-    
+
+    def loadDoors(self): 
+        for door in self.doorList : 
+            if game.globalDoorList[game.currentRoom.roomID][door[3]-1] : 
+                self.allDoors.append(Door(door[0], door[1], door[2], door[3], door[4], door[5]))
+
+        for i in range(len(game.currentRoom.allDoors)): 
+            game.currentRoom.allDoors[0].clear()
+
+        game.currentRoom.allDoors = self.allDoors
+        for door in self.allDoors:
+            game.currentRoom.thingsWithCollision.add(door.drawing)
+
     def load(self): 
         self.loadWalls()
         self.loadNPCs()
         self.loadItems()
+        self.loadDoors()
     
     def loadingZone(self, direction): 
         zone = self.exits[direction][2]
@@ -812,7 +882,6 @@ class TutorialRoom1 (Room):
         super().__init__()
         self.roomID = 'TutorialRoom1'
         self.exits['TOP'][2] = TutorialRoom2
-        self.wallList.append([200, 200, 50, 'h'])
     
 class TutorialRoom2 (Room): 
     def __init__(self): 
@@ -834,7 +903,7 @@ class TutorialRoom4 (Room):
         game.currentRoom.roomID = 'TutorialRoom4'
         self.exits['LEFT'][2] = TutorialRoom3
         self.exits['TOP'][2] = TutorialRoom5
-        self.itemList.append([100, 200, 'flashlight', 1])
+        self.itemList.append([100, 200, 'flashlight', 1, None])
 
 class TutorialRoom5 (Room): 
     def __init__(self): 
@@ -850,7 +919,7 @@ class TutorialRoom6 (Room):
         game.currentRoom.roomID = 'TutorialRoom6'
         self.exits['BOTTOM'][2] = TutorialRoom5
         self.exits['LEFT'][2] = TutorialRoom7
-        self.itemList.append([200, 200, 'dashItem', 1])
+        self.itemList.append([200, 200, 'dashItem', 1, None])
 
 class TutorialRoom7 (Room): 
     def __init__(self): 
@@ -893,7 +962,7 @@ def onKeyPress(key):
         if key == 'down':
             game.currentRoom.room.loadingZone('BOTTOM')
         if key == 'p': 
-            print(game.currentRoom.roomID)
+            print(player.obtainedKeys, player.obtainedSpecialKeys)
 
 def onMouseMove(x, y): 
     game.handleMouseMove(x, y)
