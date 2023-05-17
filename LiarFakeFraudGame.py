@@ -88,6 +88,7 @@ class GameState(object):
 
     def pause(self): 
         self.mode = 'PAUSED'
+        Sounds.pauseMenu.play()
         self.pauseMenu.visible = True
         self.pauseMenu.toFront()
 
@@ -380,13 +381,13 @@ class Player (object):
 
     def die(self):
         print('player is dead')
+        game.mode = 'DEAD'
         if self.savePointRoom is not None:
             game.currentRoom.loadNewRoom(self.savePointRoom, 'SAVE POINT')
             self.deathSubText.value = 'Loading from last save point...'
         else:
             game.currentRoom.loadNewRoom(TutorialRoom1, 'TUTORIAL SPAWN')
             self.deathSubText.value = 'Do better this time!'
-        game.mode = 'DEAD'
         self.deathText.visible = True
         self.health = self.maxHealth
 
@@ -436,6 +437,7 @@ class Player (object):
             if self.currentAction == 'dash' and self.isDashing == False and self.canDash == True and self.hasDash == True:
                 self.dashToX, self.dashToY = self.getDashDestination()
                 self.isDashing = True
+                Sounds.dash.play()
                 self.dashRange = Group(Line(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY, fill = 'blue', opacity = 25))
 
 ################################
@@ -909,6 +911,8 @@ class SaveRoom (Room):
             ]
         self.draw()
         player.savePointRoom = self.__class__
+        if game.mode == 'PLAYING':
+            Sounds.saveGame.play()
 
     def draw(self):
         floor = Image('Images/Save-Room.png', 10, 5, width = 380, height = 380, opacity = 10)
