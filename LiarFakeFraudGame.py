@@ -227,6 +227,9 @@ class Player (object):
         self.drawing = Group(self.sight, self.body, self.swing, self.hitbox)
         self.drawing.visible = False 
         self.healthBar = HealthBar(self)
+        self.deathSubText = Label('Do better this time', 200, 150, size = 20, fill = 'red')
+        self.deathText = Group(Rect(0, 0, 400, 400, fill='darkGray', opacity = 80) , Label('You Died Bruh', 200, 100, size = 30, fill = 'red'), self.deathSubText, Label('Click anywhere to continue', 200, 300, size = 15, fill = 'red'))
+        self.deathText.visible = False
         
     def movement(self, key): 
         controls = {
@@ -377,9 +380,15 @@ class Player (object):
 
     def die(self):
         print('player is dead')
-        game.currentRoom.loadNewRoom(self.savePointRoom, 'SAVE POINT')
+        if self.savePointRoom is not None:
+            game.currentRoom.loadNewRoom(self.savePointRoom, 'SAVE POINT')
+            self.deathSubText.value = 'Loading from last save point...'
+        else:
+            game.currentRoom.loadNewRoom(TutorialRoom1, 'TUTORIAL SPAWN')
+            self.deathSubText.value = 'Do better this time!'
+        game.mode = 'DEAD'
+        self.deathText.visible = True
         self.health = self.maxHealth
-        
 
     def handleActionIndex(self, key): 
         if key == Keybinds.actionIndexDown : 
@@ -413,7 +422,10 @@ class Player (object):
         self.showSelectedItem()
         self.manageTimers()
     def handleMousePress(self, x, y): 
-        if game.currentRoom.roomID != 0 : 
+        if game.mode == 'DEAD':
+            self.deathText.visible = False
+            game.mode = 'PLAYING'
+        elif game.currentRoom.roomID != 0 : 
             if self.currentAction == 'swing': 
                 self.swingAttack()
                 
@@ -586,7 +598,6 @@ class NPC(object):
     def die(self):
         # Can add a death sound ext here
         game.globalNPCList[game.currentRoom.roomID][self.index-1] = False
-        
         self.clear()
 
     def clear(self):
@@ -822,7 +833,6 @@ class TutorialRoom1 (Room):
         super().__init__()
         self.roomID = 'TutorialRoom1'
         self.exits['TOP'][2] = TutorialRoom2
-        self.exits['BOTTOM'][2] = TempSaveRoom
         self.wallList.append([200, 200, 50, 'h'])
     
 class TutorialRoom2 (Room): 
@@ -882,12 +892,33 @@ class TutorialRoom8 (Room):
 class SaveRoom (Room):
     def __init__(self):
         super().__init__()
+        self.savingMessage = [
+            ["Saving progress... because real life doesn't", "come with a 'rewind' button. Cherish this privilege!"],
+            ["Save Station: Unmask the secrets, but don't", "let your progress become another layer of deception!"],
+            ["Save Room: A refuge from the tangled web of", "conspiracies. Trust no one, except the save button!"],
+            ["Preserve your truth-seeking journey here.", "The lies may run deep, but your progress stays untainted!"],
+            ["Saving... Shield your progress from the shadowy whispers", "of deception. Unravel the conspiracy with confidence!"],
+            ["Save Point: Leave no stone unturned, no deceit unnoticed.", "Your progress is a beacon of truth amidst the lies!"],
+            ["Save Zone: Where the conspiracies take a break and", "have a cup of tea. Just don't spill it on the evidence!"],
+            ["Welcome to the Save Lair, where frauds and fakes", "take a timeout to practice their poker faces."],
+            ["Saving... because in a world of lies and cheats, we've got", "your back! Your secret's safe with us... probably."],
+            ["Save Zone: Where the truth lies...", "conveniently saved for your convenience!"],
+            ["Saving progress: Because even conspiracies need a", "coffee break. Time to refold those tinfoil hats!"],
+            ["Saving... because even the most elaborate deceptions", "need occasional backup plans. We've got you covered!"],
+            ["Save your progress and remember,", "even heroes need bathroom breaks!"]
+            ]
         self.draw()
         player.savePointRoom = self.__class__
 
     def draw(self):
-        self.savePoint = Group(Circle(200, 200, 10, fill = 'green'), Circle(200, 200, 5, fill = 'black'))
-        self.drawing = Group(self.savePoint)
+        floor = Image('Images/Save-Room.png', 10, 5, width = 380, height = 380, opacity = 10)
+        text = self.savingMessage[randrange(0, len(self.savingMessage))]
+        text1 = text[0]
+        text2 = text[1]
+        self.savePointText = Group(Label(text1, 200, 190, size = 15, fill = 'slateGray', borderWidth = 0.5), Label(text2, 200, 210, size = 15, fill = 'slateGray'))
+        self.savePointText.centerX, self.savePointText.centerY = 200, 200
+        self.drawing = Group(floor, self.savePointText)
+        
 
 class EndOfTutorialSaveRoom (SaveRoom):
     def __init__(self):
@@ -928,7 +959,7 @@ def onMouseMove(x, y):
 def onMouseDrag(x, y): 
     game.handleMouseMove(x, y)
 def onMousePress(x, y): 
-    if game.mode == 'PLAYING' and game.currentRoom != None :
+    if (game.mode == 'PLAYING' or game.mode == 'DEAD')  and game.currentRoom != None :
         player.handleMousePress(x, y)
     if game.mode == 'TITLE SCREEN': 
         game.handleMousePress()
