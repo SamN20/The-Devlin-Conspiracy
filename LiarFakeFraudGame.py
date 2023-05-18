@@ -24,18 +24,28 @@ class GameState(object):
             'TutorialRoom4' : [True], 
             'TutorialRoom6' : [True],
             'TutorialRoom6A' : [True], 
-            'TutorialRoom6B' : [True]
+            'TutorialRoom6B' : [True], 
+
+            'FireRoom1A' : [True], 
+            'FireRoom2C' : [True], 
+            'FireRoom8' : [True], 
         }
 
         self.globalNPCList = { 
             'TutorialRoom5' : [True, True], 
             'TutorialRoom6B' : [True, True], 
-            'TutorialRoom7' : [True, True]
-            }
+            'TutorialRoom7' : [True, True], 
+
+            'FireRoom2B' : [True], 
+            'FireRoom4' : [True], 
+            'FireRoom6' : [True, True], 
+        }
         self.globalDoorList = { 
             'TutorialRoom6' : [True],
-            'TutorialRoom6A' : [True]
+            'TutorialRoom6A' : [True], 
+            'FireRoom2' : [True, True]
         }
+        
         self.cover = Rect(0, 0, 400, 400, opacity = 0)
 
         self.animating = False
@@ -142,6 +152,7 @@ class CurrentRoomState(object):
         self.allItems = [ ]
         self.allNPCs = [ ]
         self.allDoors = [ ]
+        self.allLavaTiles = [ ]
 
         self.drawing = Group()
 
@@ -498,7 +509,7 @@ class NPC(object):
     def draw(self, cx, cy, rotationAngle, sightDistance, colour, level):
         self.sight = Arc(cx, cy, sightDistance*10 + 50, sightDistance*10 + 50, -45, 90, fill = 'lightGrey', opacity = 50, rotateAngle = rotationAngle)
         self.body = Circle(cx, cy, 7, fill = colour, border = 'black')
-        self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
+        self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 0, align = 'center')
         self.swing = Arc(cx, cy, 60+10*level, 60+10*level, -55, 10, fill = 'saddleBrown')
         self.drawing = Group(self.sight, self.hitbox, self.swing, self.body)
         self.healthBar = HealthBar(self)
@@ -719,6 +730,8 @@ class Door (Obstacle):
         door = buildWall(0, 0, 150, self.direction)
         door.height -= 2
         if self.type == 'NORMAL': 
+            door.fill = 'peru'
+        if self.type == 'LOCKED': 
             door.fill = 'grey'
         if self.type == 'SPECIAL': 
             door.fill = self.colour
@@ -727,17 +740,34 @@ class Door (Obstacle):
         self.drawing = Group(door)
     def unlock(self): 
         if self.type == 'NORMAL': 
-            player.obtainedKeys -= 1 
+            game.globalDoorList[game.currentRoom.roomID][self.index-1] = False
+            self.clear()
+        if self.type == 'LOCKED': 
+            if player.obtainedKeys > 0:
+                player.obtainedKeys -= 1 
+                game.globalDoorList[game.currentRoom.roomID][self.index-1] = False
+                self.clear()
         if self.type == 'SPECIAL': 
             if self.colour in player.obtainedSpecialKeys: 
                 player.obtainedSpecialKeys.remove(self.colour)
+                game.globalDoorList[game.currentRoom.roomID][self.index-1] = False
+                self.clear()
         
-        game.globalDoorList[game.currentRoom.roomID][self.index-1] = False
-        self.clear()
 
-class Lava (Obstacle): # MAKE THIS 
-    def __init__(self, index, colour):
-        super().__init__(index, colour)
+class Lava (Obstacle): 
+    def __init__(self, cx, cy, length, width, colour):
+        super().__init__(None, colour)
+        self.colour = colour
+        self.draw(cx, cy, length, width, colour)
+    def draw(self, cx, cy, length, width, colour): 
+        self.drawing = Group(Rect(cx, cy, length, width, fill = colour))
+
+    def killPlaneLogic(self): 
+        if self.drawing.contains(player.hitbox.centerX, player.hitbox.centerY) == True: 
+            player.health = 0
+
+    def clear(self): 
+        self.drawing.clear()
 
 class Projectile(object): 
     def __init__(self, cx, cy, angle, colour):
@@ -817,10 +847,12 @@ class Room (object):
         self.npcList = [ ]
         self.itemList = [ ]
         self.doorList = [ ]
+        self.lavaTileList = [ ]
 
         self.allNPCs = [ ]
         self.allItems = [ ]
         self.allDoors = [ ]
+        self.allLavaTiles = [ ]
 
         self.drawing = Group()
 
@@ -887,12 +919,22 @@ class Room (object):
         for door in self.allDoors:
             game.currentRoom.thingsWithCollision.add(door.drawing)
 
+    def loadLavaTiles(self): 
+        for tile in self.lavaTileList : 
+            self.allLavaTiles.append(Lava(tile[0], tile[1], tile[2], tile[3], tile[4]))
+
+        for tile in game.currentRoom.allLavaTiles:
+            tile.clear()
+
+        game.currentRoom.allLavaTiles = self.allLavaTiles
+
     def load(self): 
         game.currentRoom.drawing = self.drawing
         self.loadWalls()
         self.loadNPCs()
         self.loadItems()
         self.loadDoors()
+        self.loadLavaTiles()
     
     def loadingZone(self, direction): 
         zone = self.exits[direction][2]
@@ -967,7 +1009,7 @@ class TutorialRoom6A (Room):
         self.exits['LEFT'][2] = TutorialRoom6
         self.exits['RIGHT'][2] = TutorialRoom6B
         self.itemList.append([300, 100, 'keyItem', 1, None])
-        self.doorList.append([395, 200, 'NORMAL', 1, None, 'v'])
+        self.doorList.append([395, 200, 'LOCKED', 1, None, 'v'])
 
 class TutorialRoom6B (Room): 
     def __init__(self):
@@ -1031,6 +1073,50 @@ class EndOfTutorialSaveRoom (SaveRoom):
         super().__init__()
         game.currentRoom.roomID = 'EOfTSR'
         self.exits['BOTTOM'][2] = TutorialRoom8
+        self.exits['RIGHT'][2] = FireRoom1
+
+class FireRoom1 (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'FireRoom1'
+        self.exits['LEFT'][2] = EndOfTutorialSaveRoom
+        self.exits['TOP'][2] = FireRoom1A
+        self.exits['BOTTOM'][2] = FireRoom2
+        self.lavaTileList.append([10, 10, 115, 115, 'red'])
+        self.lavaTileList.append([10, 275, 115, 115, 'red'])
+        self.lavaTileList.append([275, 10, 115, 380, 'red'])
+        
+class FireRoom1A (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'FireRoom1A'
+        self.exits['BOTTOM'][2] = FireRoom1
+        self.itemList.append([200, 200, 'keyItem', 1, None])
+        self.lavaTileList.append([10, 10, 115, 380, 'red'])
+        self.lavaTileList.append([275, 10, 115, 380, 'red'])
+        self.lavaTileList.append([125, 10, 150, 115, 'red'])
+
+class FireRoom2 (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'FireRoom2'
+        self.exits['TOP'][2] = FireRoom1
+        self.exits['BOTTOM'][2] = FireRoom2A
+        self.exits['RIGHT'][2] = FireRoom2
+        self.doorList.append([200, 395, 'LOCKED', 1, None, 'h'])
+        self.doorList.append([395, 200, 'SPECIAL', 1, 'blue', 'v'])
+
+class FireRoom2A (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'FireRoom2A'
+        self.exits['TOP'][2] = FireRoom2
+
+class FireRoom3 (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'FireRoom3'
+        self.exits['LEFT'][2] = FireRoom2
 
 ###########################
 ###### CMU FUNCTIONS ######
@@ -1059,6 +1145,8 @@ def onKeyPress(key):
             game.currentRoom.room.loadingZone('BOTTOM')
         if key == 'p': 
             print(player.obtainedKeys, player.obtainedSpecialKeys)
+        if key == 'j': 
+            game.currentRoom.loadNewRoom(EndOfTutorialSaveRoom, 'TOP')
 
 def onMouseMove(x, y): 
     game.handleMouseMove(x, y)
@@ -1075,6 +1163,8 @@ def onStep():
         game.currentRoom.handleOnStep() 
         for enemy in game.currentRoom.allNPCs:
             enemy.handleOnStep()
+        for tile in game.currentRoom.allLavaTiles: 
+            tile.killPlaneLogic()
     game.handleOnStep()
 
 def mapValue(value, valueMin, valueMax, targetMin, targetMax):
