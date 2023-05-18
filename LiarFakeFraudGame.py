@@ -2,7 +2,7 @@ from cmu_graphics import *
 import Keybinds
 import Sounds
 
-app.stepsPerSecond = 120
+app.stepsPerSecond = 60
 app.background = 'gainsboro'
 
 class GameState(object): 
@@ -71,13 +71,13 @@ class GameState(object):
         Sounds.Tutorial.play(loop = True)
 
     def beginStartingAnimation(self): 
-        Sounds.Titlescreen.fadeout(6000)
+        Sounds.Titlescreen.fadeout(3000)
         self.animating = True
 
     def animate(self): 
         self.startAnimationTimer += 1
-        mValue = mapValue(1, 0, 480, 0, 100)
-        if self.startAnimationTimer <= 480 : 
+        mValue = mapValue(1, 0, 240, 0, 100)
+        if self.startAnimationTimer <= 240 : 
             if self.cover.opacity + mValue > 100: 
                 self.cover.opacity = 100
             else: 
@@ -188,7 +188,7 @@ class Player (object):
 
         self.dx = 0
         self.dy = 0
-        self.speed = 0.5 + 0.25*self.moveMod
+        self.speed = 0.75 + 0.25*self.moveMod
         self.canMove = True
     
         self.maxHealth = 4 + level*4
@@ -198,42 +198,42 @@ class Player (object):
 
         self.draw(cx, cy, level)
 
-        self.actions = [None]
+        self.actions = ['dash', 'swing', 'shoot']
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
         self.showSelectedAction = False 
         self.currentActionIcon = None
         
-        self.hasDash = False
+        self.hasDash = True
         self.canDash = True
         self.dashDistance = 75 + 25*self.dashMod
-        self.dashSpeed = 2 + 0.5*self.dashMod
+        self.dashSpeed = 2.5 + 0.5*self.dashMod
         self.isDashing = False
-        self.dashDelay = 240 - 30*self.dashMod
+        self.dashDelay = 120 - 15*self.dashMod
         self.dashCooldown = 0
         self.dashRange = Group()
         
-        self.hasSwing = False
+        self.hasSwing = True
         self.canSwing = True 
         self.attacking = False
-        self.swingDelay = 240 - 30*self.swingMod
+        self.swingDelay = 120 - 15*self.swingMod
         self.swingCooldown = 0
         self.swing
         
-        self.hasShoot = False
+        self.hasShoot = True
         self.canShoot = True
         self.bullets = [ ]
-        self.shootDelay = 180 - 30*self.shootMod
+        self.shootDelay = 90 - 15*self.shootMod
         self.shootCooldown = 0    
 
         self.obtainedKeys = 0
         self.obtainedSpecialKeys = [ ]
 
     def draw(self, cx, cy, level): 
-        self.sight = Arc(cx, cy, level*15 + 50, level*15 + 50, -45, 90, fill = 'white', opacity = 0)
+        self.sight = Arc(cx, cy, 100, 100, -45, 90, fill = 'white', opacity = 0)
         self.body = Circle(cx, cy, 7, fill = 'white', border = 'black')
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 0, align = 'center')
-        self.swing = Arc(cx, cy, 30*level, 30*level, -55, 10, fill = 'saddleBrown', opacity = 0)
+        self.swing = Arc(cx, cy, 30 + 30*level, 30 + 30*level, -55, 10, fill = 'saddleBrown', opacity = 0)
         self.drawing = Group(self.sight, self.body, self.swing, self.hitbox)
         self.drawing.visible = False 
         self.healthBar = HealthBar(self)
@@ -428,7 +428,7 @@ class Player (object):
                 self.movement(key)
     def handleKeyPress(self, key): 
         self.handleActionIndex(key)
-        if key == Keybinds.collect: 
+        if key == Keybinds.interact: 
             self.collect()
             self.unlockDoor()
     def handleOnStep(self): 
@@ -470,7 +470,7 @@ class NPC(object):
        
         self.dx = 0
         self.dy = 0
-        self.dr = 1
+        self.dr = 1.5
         self.speed = 0.5 # Could change based on level
         self.followPlayer = True
         
@@ -491,7 +491,7 @@ class NPC(object):
         self.hasSwing = True
         self.canSwing = True 
         self.attacking = False
-        self.swingDelay = 240 - 30*self.swingMod
+        self.swingDelay = 120 - 30*self.swingMod
         self.swingCooldown = 0
         game.currentRoom.thingsThatDamagePlayer.append([self.swing, 4, None])
         
@@ -499,7 +499,7 @@ class NPC(object):
         self.sight = Arc(cx, cy, sightDistance*10 + 50, sightDistance*10 + 50, -45, 90, fill = 'lightGrey', opacity = 50, rotateAngle = rotationAngle)
         self.body = Circle(cx, cy, 7, fill = colour, border = 'black')
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
-        self.swing = Arc(cx, cy, 40+10*level, 40+10*level, -55, 10, fill = 'saddleBrown')
+        self.swing = Arc(cx, cy, 60+10*level, 60+10*level, -55, 10, fill = 'saddleBrown')
         self.drawing = Group(self.sight, self.hitbox, self.swing, self.body)
         self.healthBar = HealthBar(self)
 
@@ -590,7 +590,7 @@ class NPC(object):
         if self.attacking == True: 
             self.swing.opacity = 75
             finishAngle = self.sight.rotateAngle + 95
-            self.swing.rotateAngle += (3 + 1.5*self.swingMod)
+            self.swing.rotateAngle += (2 + 0.5*self.swingMod)
             
             if self.swing.rotateAngle >= finishAngle:
                 self.attacking = False
@@ -709,8 +709,7 @@ class Obstacle (object):
     def clear(self): 
         self.drawing.clear()
         
-
-class Door (Obstacle) : 
+class Door (Obstacle): 
     def __init__(self, cx, cy, type, index, colour, direction):
         super().__init__(index, colour)
         self.type = type
@@ -736,6 +735,10 @@ class Door (Obstacle) :
         game.globalDoorList[game.currentRoom.roomID][self.index-1] = False
         self.clear()
 
+class Lava (Obstacle): # MAKE THIS 
+    def __init__(self, index, colour):
+        super().__init__(index, colour)
+
 class Projectile(object): 
     def __init__(self, cx, cy, angle, colour):
         self.drawing = Group(Circle(cx, cy, 3, fill = colour))
@@ -745,7 +748,7 @@ class Projectile(object):
 
     def move(self, type, modifier): 
         if type == 'basic' : 
-            self.nextX, self.nextY = getPointInDir(self.drawing.centerX, self.drawing.centerY, self.angle, 3 + modifier)
+            self.nextX, self.nextY = getPointInDir(self.drawing.centerX, self.drawing.centerY, self.angle, 2 + modifier)
             self.drawing.centerX = self.nextX
             self.drawing.centerY = self.nextY
     def clear(self): 
@@ -1149,6 +1152,6 @@ def buildWall(x, y, size, type): # h for horizontal, v for vertical
 ###########################
 
 game = GameState()
-player = Player(200, 300, 5)
+player = Player(200, 300, 1)
 
 cmu_graphics.run()
