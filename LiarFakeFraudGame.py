@@ -20,19 +20,20 @@ class GameState(object):
                          } 
         self.roomListIndex = 2
         
-        self.globalItemList = { 
+        self.globalItemList = { # room ID number : [item1, item2, item3, ...]
+            'TutorialRoom2' : [True, True],
             'TutorialRoom4' : [True], 
             'TutorialRoom6' : [True],
             'TutorialRoom6A' : [True], 
             'TutorialRoom6B' : [True]
         }
 
-        self.globalNPCList = { 
+        self.globalNPCList = { # room ID number : [npc1, npc2, npc3, ...]
             'TutorialRoom5' : [True, True], 
             'TutorialRoom6B' : [True, True], 
             'TutorialRoom7' : [True, True]
             }
-        self.globalDoorList = { 
+        self.globalDoorList = { # room ID number : [door1, door2, door3, ...]
             'TutorialRoom6' : [True],
             'TutorialRoom6A' : [True]
         }
@@ -391,10 +392,10 @@ class Player (object):
     def unlockDoor(self): 
         for door in game.currentRoom.allDoors : 
             if door.direction == 'h' : 
-                if distance(self.hitbox.centerX, self.hitbox.centerY, self.hitbox.centerX, door.drawing.centerY) < 30: 
+                if distance(self.hitbox.centerX, self.hitbox.centerY, self.hitbox.centerX, door.drawing.centerY) < 30: # checks to see if the player is close enough to the door
                     door.unlock()
             if door.direction == 'v' : 
-                if distance(self.hitbox.centerX, self.hitbox.centerY, door.drawing.centerX, self.hitbox.centerY) < 30: 
+                if distance(self.hitbox.centerX, self.hitbox.centerY, door.drawing.centerX, self.hitbox.centerY) < 30:  # checks to see if the player is close enough to the door
                     door.unlock()
         # code is more clunky, unlocking doors in game is less clunky
 
@@ -652,7 +653,7 @@ class Item (object):
         self.colour = colour
         self.playerUpgrades = ['dashItem', 'swingItem', 'shootItem']
         self.draw(cx, cy)
-    def draw(self, cx, cy): 
+    def draw(self, cx, cy): # Draws the item based on its type
         self.hitbox = Circle(cx, cy, 5, opacity = 0)
         if self.itemType == 'dashItem': 
             self.model = Group(Rect(cx, cy, 6, 3, fill = 'saddleBrown'), Rect(cx+9, cy, 6, 3, fill = 'saddleBrown'), 
@@ -674,10 +675,15 @@ class Item (object):
         if self.itemType == 'specialKeyItem': 
             self.model = Group(Circle(cx, cy, 5, border = self.colour, fill = None, borderWidth = 2), Line(cx, cy-5, cx, cy-15, fill = self.colour), 
                 Line(cx, cy-15, cx+5, cy-15, fill = self.colour), Line(cx, cy-10, cx+5, cy-10, fill = self.colour)) 
+        if self.itemType == 'healthItem':
+            self.model = Group(Rect(cx, cy, 10, 10, fill = 'red'), Rect(cx+2, cy+2, 6, 6, fill = 'white'), 
+                               Rect(cx+4, cy+4, 2, 2, fill = 'red'))
+        if self.itemType == 'healItem':
+            self.model = Group(Circle(cx, cy, 5, fill = 'red'), Circle(cx, cy, 3, fill = 'white'))
         
         self.drawing = Group(self.hitbox, self.model)
 
-    def hasBeenCollected(self): 
+    def hasBeenCollected(self): # Checks if the player has collected the item
         self.clear()
         game.globalItemList[game.currentRoom.roomID][self.index-1] = False
         if None in player.actions and self.itemType in self.playerUpgrades: 
@@ -697,12 +703,17 @@ class Item (object):
             player.obtainedKeys += 1
         if self.itemType == 'specialKeyItem' : 
             player.obtainedSpecialKeys.append(self.colour)
+        if self.itemType == 'healthItem':
+            player.maxHealth += 4
+        if self.itemType == 'healItem':
+            player.health += 4
+            if player.health > player.maxHealth:
+                player.health = player.maxHealth   
     
-    
-    def clear(self): 
+    def clear(self): # Clears the item from the room
         self.drawing.clear()
 
-class Obstacle (object): 
+class Obstacle (object):
     def __init__(self, index, colour): 
         self.index = index
         self.colour = colour
@@ -711,7 +722,7 @@ class Obstacle (object):
         self.drawing.clear()
         
 
-class Door (Obstacle) : 
+class Door (Obstacle) :
     def __init__(self, cx, cy, type, index, colour, direction):
         super().__init__(index, colour)
         self.type = type
@@ -737,7 +748,7 @@ class Door (Obstacle) :
         game.globalDoorList[game.currentRoom.roomID][self.index-1] = False
         self.clear()
 
-class Projectile(object): 
+class Projectile(object):
     def __init__(self, cx, cy, angle, colour):
         self.drawing = Group(Circle(cx, cy, 3, fill = colour))
         self.moveX, self.moveY = getPointInDir(cx, cy, angle, 100)
@@ -866,12 +877,12 @@ class Room (object):
         game.currentRoom.allNPCs = self.allNPCs
     
     def loadItems(self):
+        for i in range(len(game.currentRoom.allItems)): 
+            game.currentRoom.allItems[0].clear()
+        
         for item in self.itemList : 
             if game.globalItemList[game.currentRoom.roomID][item[3]-1] : 
                 self.allItems.append(Item(item[0], item[1], item[2], item[3], item[4]))
-        
-        for i in range(len(game.currentRoom.allItems)): 
-            game.currentRoom.allItems[0].clear()
         
         game.currentRoom.allItems = self.allItems
 
@@ -926,6 +937,8 @@ class TutorialRoom2 (Room):
         game.currentRoom.roomID = 'TutorialRoom2'
         self.exits['BOTTOM'][2] = TutorialRoom1
         self.exits['RIGHT'][2] = TutorialRoom3
+        self.itemList.append([100, 100, 'healthItem', 1, None])
+        self.itemList.append([100, 300, 'healItem', 2, None])
         
 class TutorialRoom3 (Room): 
     def __init__(self): 
@@ -1031,6 +1044,16 @@ class EndOfTutorialSaveRoom (SaveRoom):
         super().__init__()
         game.currentRoom.roomID = 'EOfTSR'
         self.exits['BOTTOM'][2] = TutorialRoom8
+        self.exits['LEFT'][2] = SandTempleRoom1
+
+
+## Sand Temple World ##
+class SandTempleRoom1 (Room):
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'Sand1'
+        self.exits['RIGHT'][2] = EndOfTutorialSaveRoom
+        # self.exits['LEFT'][2] = SandTempleRoom2
 
 ###########################
 ###### CMU FUNCTIONS ######
