@@ -7,7 +7,8 @@ Tutorial = Sound('Sound_files\SoundTrack\ALIBI_Music-Catatumbo_Lightning-Master-
 
 # Sound Effects
 saveGame = Sound('Sound_files\SoundEffects\saveRoomSound.wav')
+saveGame.set_volume(0.5)
 pauseMenu = Sound('Sound_files\SoundEffects\PauseMenu.wav')
 pauseMenu.set_volume(0.2)
 dash = Sound('Sound_files\SoundEffects\Dash.wav')
-# Dash.set_volume(0.2)
+dash.set_volume(0.3)
