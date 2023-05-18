@@ -22,14 +22,19 @@ class GameState(object):
         
         self.globalItemList = { 
             'TutorialRoom4' : [True], 
-            'TutorialRoom6' : [True]
+            'TutorialRoom6' : [True],
+            'TutorialRoom6A' : [True], 
+            'TutorialRoom6B' : [True]
         }
 
         self.globalNPCList = { 
             'TutorialRoom5' : [True, True], 
+            'TutorialRoom6B' : [True, True], 
             'TutorialRoom7' : [True, True]
             }
         self.globalDoorList = { 
+            'TutorialRoom6' : [True],
+            'TutorialRoom6A' : [True]
         }
         self.cover = Rect(0, 0, 400, 400, opacity = 0)
 
@@ -385,8 +390,13 @@ class Player (object):
 
     def unlockDoor(self): 
         for door in game.currentRoom.allDoors : 
-            if distance(self.hitbox.centerX, self.hitbox.centerY, door.drawing.centerX, door.drawing.centerY) < 30: 
-                door.unlock()
+            if door.direction == 'h' : 
+                if distance(self.hitbox.centerX, self.hitbox.centerY, self.hitbox.centerX, door.drawing.centerY) < 30: 
+                    door.unlock()
+            if door.direction == 'v' : 
+                if distance(self.hitbox.centerX, self.hitbox.centerY, door.drawing.centerX, self.hitbox.centerY) < 30: 
+                    door.unlock()
+        # code is more clunky, unlocking doors in game is less clunky
 
     def die(self):
         print('player is dead')
@@ -704,9 +714,10 @@ class Door (Obstacle) :
     def __init__(self, cx, cy, type, index, colour, direction):
         super().__init__(index, colour)
         self.type = type
-        self.draw(cx, cy, direction)
-    def draw(self, cx, cy, direction): 
-        door = buildWall(0, 0, 150, direction)
+        self.direction = direction
+        self.draw(cx, cy)
+    def draw(self, cx, cy): 
+        door = buildWall(0, 0, 150, self.direction)
         door.height -= 2
         if self.type == 'NORMAL': 
             door.fill = 'grey'
@@ -883,7 +894,6 @@ class Room (object):
     def loadingZone(self, direction): 
         zone = self.exits[direction][2]
         game.currentRoom.loadNewRoom(zone, direction)
-    
 
 class TestRoom (object): 
     def __init__(self):
@@ -943,7 +953,27 @@ class TutorialRoom6 (Room):
         game.currentRoom.roomID = 'TutorialRoom6'
         self.exits['BOTTOM'][2] = TutorialRoom5
         self.exits['LEFT'][2] = TutorialRoom7
+        self.exits['RIGHT'][2] = TutorialRoom6A
         self.itemList.append([200, 200, 'dashItem', 1, None])
+        self.doorList.append([5, 200, 'SPECIAL', 1, 'red', 'v'])
+
+class TutorialRoom6A (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'TutorialRoom6A'
+        self.exits['LEFT'][2] = TutorialRoom6
+        self.exits['RIGHT'][2] = TutorialRoom6B
+        self.itemList.append([300, 100, 'keyItem', 1, None])
+        self.doorList.append([395, 200, 'NORMAL', 1, None, 'v'])
+
+class TutorialRoom6B (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'TutorialRoom6B'
+        self.exits['LEFT'][2] = TutorialRoom6A
+        self.itemList.append([300, 200, 'specialKeyItem', 1, 'red'])
+        self.npcList.append([200, 100, 270, 0, 0, 'red', 1])
+        self.npcList.append([200, 300, 270, 0, 0, 'red', 2])
 
 class TutorialRoom7 (Room): 
     def __init__(self): 
@@ -993,7 +1023,6 @@ class SaveRoom (Room):
         self.savePointText.centerX, self.savePointText.centerY = 200, 200
         self.drawing = Group(floor, self.savePointText)
         
-
 class EndOfTutorialSaveRoom (SaveRoom):
     def __init__(self):
         super().__init__()
