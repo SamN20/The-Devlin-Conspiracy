@@ -502,7 +502,7 @@ class NPC(object):
     def draw(self, cx, cy, rotationAngle, sightDistance, colour, level):
         self.sight = Arc(cx, cy, sightDistance*10 + 50, sightDistance*10 + 50, -45, 90, fill = 'lightGrey', opacity = 50, rotateAngle = rotationAngle)
         self.body = Circle(cx, cy, 7, fill = colour, border = 'black')
-        self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 25, align = 'center')
+        self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 0, align = 'center')
         self.swing = Arc(cx, cy, 60+10*level, 60+10*level, -55, 10, fill = 'saddleBrown')
         self.drawing = Group(self.sight, self.hitbox, self.swing, self.body)
         self.healthBar = HealthBar(self)
@@ -956,8 +956,11 @@ class TutorialRoom2 (Room):
         game.currentRoom.roomID = 'TutorialRoom2'
         self.exits['BOTTOM'][2] = TutorialRoom1
         self.exits['RIGHT'][2] = TutorialRoom3
-        self.itemList.append([100, 100, 'healthItem', 1, None])
-        self.itemList.append([100, 300, 'healItem', 2, None])
+        self.itemList.append([200, 100, 'healthItem', 1, None])
+        self.itemList.append([200, 300, 'healItem', 2, None])
+        label1 = Label("Collect the Max Health Boost By Pressing " + Keybinds.collect, 200, 80, size=15)
+        label2 = Label("Collect the Heal Item in the same way", 200, 280, size=15)
+        self.drawing = Group(label1, label2)
         
 class TutorialRoom3 (Room): 
     def __init__(self): 
@@ -973,6 +976,8 @@ class TutorialRoom4 (Room):
         self.exits['LEFT'][2] = TutorialRoom3
         self.exits['TOP'][2] = TutorialRoom5
         self.itemList.append([100, 200, 'flashlight', 1, None])
+        self.drawing = Group(Label("Collect the Flashlight", 200, 120, size=15), 
+                             Label("Your Flashlight will follow the mouse pointer", 200, 140, size=13))
 
 class TutorialRoom5 (Room): 
     def __init__(self): 
@@ -981,6 +986,9 @@ class TutorialRoom5 (Room):
         self.exits['BOTTOM'][2] = TutorialRoom4
         self.exits['TOP'][2] = TutorialRoom6
         self.npcList.append([200, 200, 0, 0, 0, 'grey', 1])
+        self.drawing = Group(Label("This is an enemy", 200, 120, size=15), 
+                           Label("Enemies will attack you if you are in their sight", 200, 140, size=13),
+                           Label("You will have to avoid him for now.. if only you had a weapon", 200, 160, size=13))
 
 class TutorialRoom6 (Room): 
     def __init__(self): 
@@ -991,6 +999,9 @@ class TutorialRoom6 (Room):
         self.exits['RIGHT'][2] = TutorialRoom6A
         self.itemList.append([200, 200, 'dashItem', 1, None])
         self.doorList.append([5, 200, 'SPECIAL', 1, 'red', 'v'])
+        self.drawing = Group(Label("Collect the Dash Item", 200, 120, size=15), 
+                             Label("You can use it to dash around enemies", 200, 140, size=13),
+                             Label("Be aware that there is a cooldown", 200, 160, size=13))
 
 class TutorialRoom6A (Room): 
     def __init__(self):
@@ -1000,6 +1011,8 @@ class TutorialRoom6A (Room):
         self.exits['RIGHT'][2] = TutorialRoom6B
         self.itemList.append([300, 100, 'keyItem', 1, None])
         self.doorList.append([395, 200, 'LOCKED', 1, None, 'v'])
+        self.drawing = Group(Label("Collect the Key Item", 200, 120, size=15), 
+                             Label("You can use it to unlock 1 gray locked door", 200, 140, size=13))
 
 class TutorialRoom6B (Room): 
     def __init__(self):
@@ -1009,6 +1022,8 @@ class TutorialRoom6B (Room):
         self.itemList.append([300, 200, 'specialKeyItem', 1, 'red'])
         self.npcList.append([200, 100, 270, 0, 0, 'red', 1])
         self.npcList.append([200, 300, 270, 0, 0, 'red', 2])
+        self.drawing = Group(Label("Collect the Special Key Item", 200, 120, size=15), 
+                             Label("You can use it to unlock 1 locked door of the same colour", 200, 140, size=13))
 
 class TutorialRoom7 (Room): 
     def __init__(self): 
@@ -1018,6 +1033,7 @@ class TutorialRoom7 (Room):
         self.exits['LEFT'][2] = TutorialRoom8
         self.npcList.append([200, 100, 0, 0, 0, 'grey', 1])
         self.npcList.append([200, 300, 0, 0, 0, 'grey', 2])
+        self.drawing = Group(Label("Try to avoid these guys", 200, 120, size=15))
 
 class TutorialRoom8 (Room): 
     def __init__(self): 
@@ -1025,6 +1041,14 @@ class TutorialRoom8 (Room):
         game.currentRoom.roomID = 'TutorialRoom8'
         self.exits['RIGHT'][2] = TutorialRoom7
         self.exits['TOP'][2] = EndOfTutorialSaveRoom
+        self.drawing = Group(Label("End of Tutorial", 200, 70, size=16, bold=True),
+                            Label("Congratulations!", 200, 100, size=14, bold=True),
+                            Label("You have completed the tutorial of", 200, 150, size=12),
+                            Label("The Devlin Conspiracy: The Liar, The Fake, The Fraud.", 200, 175, size=12),
+                            Label("You are now ready to uncover the secrets", 200, 225, size=12),
+                            Label("and expose the truth behind the conspiracy.", 200, 250, size=12),
+                            Label("Use your skills wisely, trust no one, and", 200, 300, size=12),
+                            Label("unravel the mystery that awaits you above!", 200, 325, size=12))
 
 class SaveRoom (Room):
     def __init__(self):
@@ -1064,6 +1088,10 @@ class EndOfTutorialSaveRoom (SaveRoom):
         game.currentRoom.roomID = 'EOfTSR'
         self.exits['BOTTOM'][2] = TutorialRoom8
         self.exits['LEFT'][2] = SandTempleRoom1
+        if 'EOfTSR' not in game.globalDoorList:
+            game.globalDoorList['EOfTSR'] = [True, True]
+        self.doorList.append([0, 200, 'NORMAL', 1, None, 'v'])
+        # self.doorList.append([395, 200, 'NORMAL', 2, None, 'V'])
 
 
 ## Sand Temple World ##
@@ -1084,7 +1112,7 @@ class SandTempleRoom1 (Room):
         self.npcList.append([30, 50, 90, 1, 0, 'khaki', 1]) # cx, cy, rotationAngle, level, sightDistance, colour, index
         self.sandFloor = Image('Images/Sand.png', -205, 0, opacity = 40)
         self.enemyCover = Rect(10, 10, 185, 105, fill = 'dimGray', opacity = 95)
-        self.darkSpots = Group(Rect(10, 115, 185, 400, fill = 'dimGray', opacity = 95),
+        self.darkSpots = Group(Rect(10, 115, 185, 400, fill = 'dimGray', opacity = 97),
                                self.enemyCover)
         tempWallList = [[195, 0, 125, 'v'], [195, 275, 125, 'v'], [145, 115, 50, 'h'], [145, 115, 250, 'v'], # cx, cy, length, direction
                         [0, 115, 120, 'h']
@@ -1214,8 +1242,8 @@ class SandTempleRoom2C (Room):
     def draw(self):
         sandFloor = Image('Images/Sand.png', 0, 0, opacity = 40)
         self.doorList.append([200, 5, 'SPECIAL', 1, 'blue', 'h'])
-        self.npcList.append([100, 50, 0, 3, 0, 'blue', 1]) # cx, cy, rotationAngle, level, sightDistance, colour, index
-        self.npcList.append([300, 50, 0, 3, 0, 'blue', 2]) # cx, cy, rotationAngle, level, sightDistance, colour, index
+        self.npcList.append([100, 50, 90, 3, 0, 'blue', 1]) # cx, cy, rotationAngle, level, sightDistance, colour, index
+        self.npcList.append([300, 50, 90, 3, 0, 'blue', 2]) # cx, cy, rotationAngle, level, sightDistance, colour, index
 
         self.drawing = Group(sandFloor)
 
