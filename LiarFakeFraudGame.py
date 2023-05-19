@@ -186,7 +186,7 @@ class Player (object):
     def __init__(self, cx, cy, level): 
         self.moveMod = 0 
         self.shootMod = 0 
-        self.swingMod = 3
+        self.swingMod = 1
         self.dashMod = 0 
 
         self.dx = 0
@@ -236,7 +236,7 @@ class Player (object):
         self.sight = Arc(cx, cy, 100, 100, -45, 90, fill = 'white', opacity = 0)
         self.body = Circle(cx, cy, 7, fill = 'white', border = 'black')
         self.hitbox = Rect(cx, cy, 15, 15, fill = 'green', opacity = 0, align = 'center')
-        self.swing = Arc(cx, cy, 30+30*level, 30+30*level, -55, 10, fill = 'saddleBrown', opacity = 0)
+        self.swing = Arc(cx, cy, 50+30*level, 50+30*level, -55, 10, fill = 'saddleBrown', opacity = 0)
         self.drawing = Group(self.sight, self.body, self.swing, self.hitbox)
         self.drawing.visible = False 
         self.healthBar = HealthBar(self)
@@ -328,7 +328,7 @@ class Player (object):
         if self.attacking == True: 
             self.swing.opacity = 75
             finishAngle = self.sight.rotateAngle + 95
-            self.swing.rotateAngle += (1.5 + 0.75*self.swingMod)
+            self.swing.rotateAngle += (2.5 + 0.75*self.swingMod)
             
             if self.swing.rotateAngle >= finishAngle:
                 self.attacking = False
@@ -376,9 +376,9 @@ class Player (object):
         if self.dashCooldown != 0: 
             self.dashCooldown -= 1
     def updatePlayer(self): 
-        # self.healthBar.updateHealthBar(self)
-        # if self.health <= 0:
-        #     self.die()
+        self.healthBar.updateHealthBar(self)
+        if self.health <= 0:
+            self.die()
         if self.shootCooldown == 0: 
             self.canShoot = True 
         if self.swingCooldown == 0: 
@@ -1000,8 +1000,8 @@ class TutorialRoom6 (Room):
         self.itemList.append([200, 200, 'dashItem', 1, None])
         self.doorList.append([5, 200, 'SPECIAL', 1, 'red', 'v'])
         self.drawing = Group(Label("Collect the Dash Item", 200, 120, size=15), 
-                             Label("You can use it to dash around enemies", 200, 140, size=13),
-                             Label("Be aware that there is a cooldown", 200, 160, size=13))
+                             Label("Click the main mouse button to use" , 200, 140, size=13),
+                             Label("Use " + Keybinds.actionIndexDown + ' and ' + Keybinds.actionIndexUp + ' to switch items', 200, 160, size=13))
 
 class TutorialRoom6A (Room): 
     def __init__(self):
@@ -1012,7 +1012,8 @@ class TutorialRoom6A (Room):
         self.itemList.append([300, 100, 'keyItem', 1, None])
         self.doorList.append([395, 200, 'LOCKED', 1, None, 'v'])
         self.drawing = Group(Label("Collect the Key Item", 200, 120, size=15), 
-                             Label("You can use it to unlock 1 gray locked door", 200, 140, size=13))
+                             Label("You can use it to unlock 1 gray locked door", 200, 140, size=13),
+                             Label("get close to the door and press "+ Keybinds.collect, 200, 160, size=13))
 
 class TutorialRoom6B (Room): 
     def __init__(self):
@@ -1093,6 +1094,7 @@ class EndOfTutorialSaveRoom (SaveRoom):
         self.doorList.append([0, 200, 'NORMAL', 1, None, 'v'])
         # self.doorList.append([395, 200, 'NORMAL', 2, None, 'V'])
         Sounds.Tutorial.fadeout(3000)
+        Sounds.Sand.fadeout(3000)
 
 ## Sand Temple World ##
 class SandTempleRoom1 (Room):
@@ -1105,7 +1107,7 @@ class SandTempleRoom1 (Room):
             game.globalDoorList['Sand1'] = [True]
         if 'Sand1' not in game.globalNPCList:
             game.globalNPCList['Sand1'] = [True]
-
+        Sounds.Sand.play()
         self.draw()
 
     def draw(self):
@@ -1140,7 +1142,9 @@ class SandTempleRoom2 (Room):
         if 'Sand2' not in game.globalNPCList:
             game.globalNPCList['Sand2'] = [True]
         if 'Sand2' not in game.globalItemList:
-            game.globalItemList['Sand2'] = [True, True]
+            game.globalItemList['Sand2'] = [True, True, True]
+        if 'Sand2' not in game.globalDoorList:
+            game.globalDoorList['Sand2'] = [True]
 
         self.draw()
 
@@ -1162,7 +1166,9 @@ class SandTempleRoom2 (Room):
         self.drawing = Group(sandFloor)
         self.itemList.append([30, 70, 'healthItem', 1, None]) # cx, cy, type, index, colour
         self.itemList.append([360, 340, 'healItem', 2, None]) # cx, cy, type, index, colour
+        self.itemList.append([55, 340, 'keyItem', 3, None]) # cx, cy, type, index, colour
         self.npcList.append([330, 340, 0, 2, 0, 'khaki', 1]) # cx, cy, rotationAngle, level, sightDistance, colour, index
+        self.doorList.append([200, 395, 'LOCKED', 1, None, 'h'])
 
         self.topLeftDarkSpot = Rect(10, 10, 190, 90, fill = 'dimGray', opacity = 97)
         self.bottomRightDarkSpot = Group(Rect(110, 260, 240, 150, fill = 'dimGray', opacity = 97), Rect(350, 285, 390-350, 400-285, fill = 'dimGray', opacity = 97))
@@ -1218,13 +1224,34 @@ class SandTempleRoom2B (Room):
         game.currentRoom.roomID = 'Sand2B'
         self.exits['TOP'][2] = SandTempleRoom2A
         self.exits['LEFT'][2] = SandTempleRoom2C
-
+        if 'Sand2B' not in game.globalNPCList:
+            game.globalNPCList['Sand2B'] = [True]
+        if 'Sand2B' not in game.globalItemList:
+            game.globalItemList['Sand2B'] = [True]
         self.draw()
     
     def draw(self):
         sandFloor = Image('Images/Sand.png', 0, 0, opacity = 40)
-
+        tempWallList = [
+            [20, 275, 265, 'h'],
+            [275, 0, 285, 'v'],
+        ]
+        for wall in tempWallList:
+            self.wallList.append(wall)
+        self.itemList.append([320, 320, 'keyItem', 1, None]) # cx, cy, type, index, colour
+        self.npcList.append([280, 320, 0, 2, 0, 'khaki', 1]) # cx, cy, rotationAngle, level, sightDistance, colour, index
         self.drawing = Group(sandFloor)
+        # dark spot in the walled area
+        self.darkSpot = Group(Rect(10, 285, 380, 105, fill = 'tan', opacity = 97), Rect(285, 10, 105, 380, fill = 'tan', opacity = 97))
+        self.darkSpots = Group(self.darkSpot)
+
+    def handleOnStep(self):
+        super().handleOnStep()
+        for enemy in game.currentRoom.allNPCs:
+            if self.darkSpot.visible == False:
+                enemy.followPlayer = True
+            else:
+                enemy.followPlayer = False
 
 class SandTempleRoom2C (Room):
     def __init__(self):
@@ -1270,12 +1297,13 @@ class SandTempleRoom2D (Room):
         game.currentRoom.roomID = 'Sand2D'
         self.exits['RIGHT'][2] = SandTempleRoom2C
         self.exits['TOP'][2] = SandTempleRoom2E
-
+        if 'Sand2D' not in game.globalDoorList:
+            game.globalDoorList['Sand2D'] = [True]
         self.draw()
     
     def draw(self):
         sandFloor = Image('Images/Sand.png', 0, 0, opacity = 40)
-
+        self.doorList.append([200, 5, 'LOCKED', 1, None, 'h'])
         self.drawing = Group(sandFloor)
 
 class SandTempleRoom2E (Room):
@@ -1310,7 +1338,7 @@ class SandTempleRoom3 (Room):
         sandFloor = Image('Images/Sand.png', 0, 0, opacity = 40)
         tempWallList = [
             [0, 300, 200, 'h'],
-            [200, 90, 120, 'v'],
+            [200, 60, 150, 'v'],
             [230, 115, 170, 'h'],
             [200, 350, 150, 'v'],
             [300, 275, 100, 'h'],
@@ -1318,11 +1346,11 @@ class SandTempleRoom3 (Room):
         for wall in tempWallList:
             self.wallList.append(wall)
         self.drawing = Group(sandFloor)
-        self.itemList.append([90, 100, 'healthItem', 1, None]) # cx, cy, type, index, colour
+        self.itemList.append([100, 100, 'healthItem', 1, None]) # cx, cy, type, index, colour
         self.itemList.append([370, 100, 'healItem', 2, None]) # cx, cy, type, index, colour
         self.itemList.append([50, 350, 'swingItem', 3, None]) # cx, cy, type, index, colour
         self.npcList.append([370, 360, 0, 2, 0, 'khaki', 1]) # cx, cy, rotationAngle, level, sightDistance, colour, index
-        self.darkSpots = Group(Rect(10, 310, 190, 80, fill = 'dimGray', opacity = 97))
+        self.darkSpots = Group(Rect(10, 310, 190, 80, fill = 'dimGray', opacity = 97), Rect(210, 10, 390-210, 105, fill = 'dimGray', opacity = 97))
 
 class SandTempleRoom4 (Room):
     def __init__(self):
@@ -1330,12 +1358,14 @@ class SandTempleRoom4 (Room):
         game.currentRoom.roomID = 'Sand4'
         self.exits['RIGHT'][2] = SandTempleRoom3
         self.exits['BOTTOM'][2] = SandTempleRoom2E
+        if 'Sand4' not in game.globalDoorList:
+            game.globalDoorList['Sand4'] = [True]
 
         self.draw()
     
     def draw(self):
         sandFloor = Image('Images/Sand.png', 0, 0, opacity = 40)
-
+        self.doorList.append([200, 395, 'LOCKED', 1, None, 'h'])
         self.drawing = Group(sandFloor)
     
 ###########################
@@ -1459,6 +1489,6 @@ def buildWall(x, y, size, type): # h for horizontal, v for vertical
 ###########################
 
 game = GameState()
-player = Player(200, 300, 1)
+player = Player(200, 300, 1) # cx, cy, level
 
 cmu_graphics.run()
