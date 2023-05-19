@@ -1107,7 +1107,8 @@ class SandTempleRoom1 (Room):
             game.globalDoorList['Sand1'] = [True]
         if 'Sand1' not in game.globalNPCList:
             game.globalNPCList['Sand1'] = [True]
-        Sounds.Sand.play()
+        if player.drawing.centerX < 300:
+            Sounds.Sand.play()
         self.draw()
 
     def draw(self):
