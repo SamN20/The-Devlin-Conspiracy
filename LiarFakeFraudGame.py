@@ -1092,6 +1092,8 @@ class EndOfTutorialSaveRoom (SaveRoom):
             game.globalDoorList['EOfTSR'] = [True, True]
         self.doorList.append([0, 200, 'NORMAL', 1, None, 'v'])
         # self.doorList.append([395, 200, 'NORMAL', 2, None, 'V'])
+        Sounds.Tutorial.fadeout(3000)
+        # Sounds.SandTemple.fadeout(3000)
 
 
 ## Sand Temple World ##
@@ -1105,6 +1107,8 @@ class SandTempleRoom1 (Room):
             game.globalDoorList['Sand1'] = [True]
         if 'Sand1' not in game.globalNPCList:
             game.globalNPCList['Sand1'] = [True]
+
+        # Sounds.SandTemple.play()
 
         self.draw()
 
@@ -1306,13 +1310,13 @@ class SandTempleRoom3 (Room):
         tempWallList = [
             [0, 300, 200, 'h'],
             [200, 90, 120, 'v'],
-            [250, 150, 170, 'h'],
+            [230, 115, 170, 'h'],
             [200, 350, 150, 'v'],
             [350, 250, 100, 'h'],
-            [450, 225, 150, 'v'],
-            [450, 375, 100, 'h'],
-            [550, 100, 150, 'v'],
-            [375, 100, 50, 'h']
+            # [350, 225, 150, 'v'],
+            # [350, 375, 100, 'h'],
+            # [350, 100, 150, 'v'],
+            # [275, 100, 50, 'h']
         ]
         for wall in tempWallList:
             self.wallList.append(wall)
