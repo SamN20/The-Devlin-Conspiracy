@@ -77,7 +77,7 @@ class GameState(object):
         self.mode = 'PLAYING'
         player.drawing.visible = True 
         game.currentRoom.loadNewRoom(TutorialRoom1, 'TUTORIAL SPAWN')
-        Sounds.Tutorial.set_volume(0.2)
+        Sounds.Tutorial.set_volume(0.4)
         Sounds.Tutorial.play(loop = True)
 
     def beginStartingAnimation(self): 
@@ -1074,6 +1074,10 @@ class EndOfTutorialSaveRoom (SaveRoom):
         game.currentRoom.roomID = 'EOfTSR'
         self.exits['BOTTOM'][2] = TutorialRoom8
         self.exits['RIGHT'][2] = FireRoom1
+        game.cover.opacity = 0
+
+        Sounds.Tutorial.fadeout(3000)
+        Sounds.FireLevel.fadeout(3000)
 
 class FireRoom1 (Room): 
     def __init__(self):
@@ -1085,7 +1089,9 @@ class FireRoom1 (Room):
         self.lavaTileList.append([10, 10, 115, 115, 'red'])
         self.lavaTileList.append([10, 275, 115, 115, 'red'])
         self.lavaTileList.append([275, 10, 115, 380, 'red'])
-        
+        Sounds.FireLevel.set_volume(0.2)
+        Sounds.FireLevel.play()
+
 class FireRoom1A (Room): 
     def __init__(self):
         super().__init__()
@@ -1102,15 +1108,17 @@ class FireRoom2 (Room):
         game.currentRoom.roomID = 'FireRoom2'
         self.exits['TOP'][2] = FireRoom1
         self.exits['BOTTOM'][2] = FireRoom2A
-        self.exits['RIGHT'][2] = FireRoom2
+        self.exits['RIGHT'][2] = FireRoom3
         self.doorList.append([200, 395, 'LOCKED', 1, None, 'h'])
-        self.doorList.append([395, 200, 'SPECIAL', 1, 'blue', 'v'])
+        self.doorList.append([395, 200, 'SPECIAL', 2, 'blue', 'v'])
 
 class FireRoom2A (Room): 
     def __init__(self):
         super().__init__()
         game.currentRoom.roomID = 'FireRoom2A'
         self.exits['TOP'][2] = FireRoom2
+        self.lavaTileList.append([10, 10, 50, 380, 'red' ])
+        self.lavaTileList.append([340, 10, 50, 380, 'red'])
 
 class FireRoom3 (Room): 
     def __init__(self):
@@ -1146,7 +1154,7 @@ def onKeyPress(key):
         if key == 'p': 
             print(player.obtainedKeys, player.obtainedSpecialKeys)
         if key == 'j': 
-            game.currentRoom.loadNewRoom(EndOfTutorialSaveRoom, 'TOP')
+            game.currentRoom.loadNewRoom(FireRoom2A, 'BOTTOM')
 
 def onMouseMove(x, y): 
     game.handleMouseMove(x, y)
