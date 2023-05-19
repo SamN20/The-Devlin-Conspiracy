@@ -186,7 +186,7 @@ class Player (object):
     def __init__(self, cx, cy, level): 
         self.moveMod = 0 
         self.shootMod = 0 
-        self.swingMod = 0
+        self.swingMod = 3
         self.dashMod = 0 
 
         self.dx = 0
@@ -328,7 +328,7 @@ class Player (object):
         if self.attacking == True: 
             self.swing.opacity = 75
             finishAngle = self.sight.rotateAngle + 95
-            self.swing.rotateAngle += (1.5 + .75*self.swingMod)
+            self.swing.rotateAngle += (1.5 + 0.75*self.swingMod)
             
             if self.swing.rotateAngle >= finishAngle:
                 self.attacking = False
@@ -376,9 +376,9 @@ class Player (object):
         if self.dashCooldown != 0: 
             self.dashCooldown -= 1
     def updatePlayer(self): 
-        self.healthBar.updateHealthBar(self)
-        if self.health <= 0:
-            self.die()
+        # self.healthBar.updateHealthBar(self)
+        # if self.health <= 0:
+        #     self.die()
         if self.shootCooldown == 0: 
             self.canShoot = True 
         if self.swingCooldown == 0: 
@@ -495,7 +495,7 @@ class NPC(object):
         self.hasSwing = True
         self.canSwing = True 
         self.attacking = False
-        self.swingDelay = 120 - 30*self.swingMod
+        self.swingDelay = 120 - 15*self.swingMod
         self.swingCooldown = 0
         game.currentRoom.thingsThatDamagePlayer.append([self.swing, 4, None])
         
@@ -575,7 +575,7 @@ class NPC(object):
                     self.justTookDamageLastCycle = True
                     if hurtyItem[2] != None:
                         hurtyItem[2].clear()
-        if any([item[0].hitsShape(self.hitbox) for item in game.currentRoom.thingsThatDamagePlayer if item[0].opacity != 0]):
+        if any([item[0].hitsShape(self.hitbox) for item in game.currentRoom.thingsThatDamageNPCs if item[0].opacity != 0]):
             self.justTookDamageLastCycle = True
         else:
             self.justTookDamageLastCycle = False
@@ -594,7 +594,7 @@ class NPC(object):
         if self.attacking == True: 
             self.swing.opacity = 75
             finishAngle = self.sight.rotateAngle + 95
-            self.swing.rotateAngle += (3 + 1*self.swingMod)
+            self.swing.rotateAngle += (2 + 0.5*self.swingMod)
             
             if self.swing.rotateAngle >= finishAngle:
                 self.attacking = False
@@ -1093,8 +1093,6 @@ class EndOfTutorialSaveRoom (SaveRoom):
         self.doorList.append([0, 200, 'NORMAL', 1, None, 'v'])
         # self.doorList.append([395, 200, 'NORMAL', 2, None, 'V'])
         Sounds.Tutorial.fadeout(3000)
-        # Sounds.SandTemple.fadeout(3000)
-
 
 ## Sand Temple World ##
 class SandTempleRoom1 (Room):
@@ -1107,8 +1105,6 @@ class SandTempleRoom1 (Room):
             game.globalDoorList['Sand1'] = [True]
         if 'Sand1' not in game.globalNPCList:
             game.globalNPCList['Sand1'] = [True]
-
-        # Sounds.SandTemple.play()
 
         self.draw()
 
@@ -1174,10 +1170,11 @@ class SandTempleRoom2 (Room):
 
     def handleOnStep(self):
         super().handleOnStep()
-        if self.bottomRightDarkSpot.visible == False:
-            game.currentRoom.allNPCs[0].followPlayer = True
-        else:
-            game.currentRoom.allNPCs[0].followPlayer = False
+        for enemy in game.currentRoom.allNPCs:
+            if self.bottomRightDarkSpot.visible == False:
+                enemy.followPlayer = True
+            else:
+                enemy.followPlayer = False
 
 class SandTempleRoom2A (Room):
     def __init__(self):
@@ -1257,12 +1254,14 @@ class SandTempleRoom2Ca (Room):
         super().__init__()
         game.currentRoom.roomID = 'Sand2Ca'
         self.exits['BOTTOM'][2] = SandTempleRoom2C
+        if 'Sand2Ca' not in game.globalItemList:
+            game.globalItemList['Sand2Ca'] = [True]
 
         self.draw()
     
     def draw(self):
         sandFloor = Image('Images/Sand.png', 0, 0, opacity = 40)
-
+        self.itemList.append([200, 200, 'specialKeyItem', 1, 'tan']) # cx, cy, type, index, colour
         self.drawing = Group(sandFloor)
 
 class SandTempleRoom2D (Room):
@@ -1285,12 +1284,14 @@ class SandTempleRoom2E (Room):
         game.currentRoom.roomID = 'Sand2E'
         self.exits['BOTTOM'][2] = SandTempleRoom2D
         self.exits['TOP'][2] = SandTempleRoom4
+        if 'Sand2E' not in game.globalItemList:
+            game.globalItemList['Sand2E'] = [True]
 
         self.draw()
     
     def draw(self):
         sandFloor = Image('Images/Sand.png', 0, 0, opacity = 40)
-
+        self.itemList.append([200, 200, 'specialKeyItem', 1, 'blue']) # cx, cy, type, index, colour
         self.drawing = Group(sandFloor)
 
 class SandTempleRoom3 (Room):
@@ -1302,7 +1303,7 @@ class SandTempleRoom3 (Room):
         if 'Sand3' not in game.globalNPCList:
             game.globalNPCList['Sand3'] = [True]
         if 'Sand3' not in game.globalItemList:
-            game.globalItemList['Sand3'] = [True, True]
+            game.globalItemList['Sand3'] = [True, True, True]
         self.draw()
     
     def draw(self):
@@ -1312,18 +1313,16 @@ class SandTempleRoom3 (Room):
             [200, 90, 120, 'v'],
             [230, 115, 170, 'h'],
             [200, 350, 150, 'v'],
-            [350, 250, 100, 'h'],
-            # [350, 225, 150, 'v'],
-            # [350, 375, 100, 'h'],
-            # [350, 100, 150, 'v'],
-            # [275, 100, 50, 'h']
+            [300, 275, 100, 'h'],
         ]
         for wall in tempWallList:
             self.wallList.append(wall)
         self.drawing = Group(sandFloor)
         self.itemList.append([90, 100, 'healthItem', 1, None]) # cx, cy, type, index, colour
-        self.itemList.append([400, 380, 'healItem', 2, None]) # cx, cy, type, index, colour
+        self.itemList.append([370, 100, 'healItem', 2, None]) # cx, cy, type, index, colour
+        self.itemList.append([50, 350, 'swingItem', 3, None]) # cx, cy, type, index, colour
         self.npcList.append([370, 360, 0, 2, 0, 'khaki', 1]) # cx, cy, rotationAngle, level, sightDistance, colour, index
+        self.darkSpots = Group(Rect(10, 310, 190, 80, fill = 'dimGray', opacity = 97))
 
 class SandTempleRoom4 (Room):
     def __init__(self):
