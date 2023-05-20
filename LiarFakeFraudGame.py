@@ -821,10 +821,11 @@ class HealthBar (object):
     def updateHealthBar(self, character):
         if character.health != character.maxHealth:
             self.drawing.visible = character.drawing.visible
-        self.middle.width = mapValue(character.health, 0, character.maxHealth, 0.1, 50) # 0.1 is the min width of the health bar (to prevent a rectangle with no width)
-        self.drawing.centerX = character.hitbox.centerX
-        self.drawing.bottom = character.hitbox.top - 5
-        self.drawing.toFront()
+        if character.health >= 0:
+            self.middle.width = mapValue(character.health, 0, character.maxHealth, 0.1, 50) # 0.1 is the min width of the health bar (to prevent a rectangle with no width)
+            self.drawing.centerX = character.hitbox.centerX
+            self.drawing.bottom = character.hitbox.top - 5
+            self.drawing.toFront()
 
     def drawHealthBar(self, health, maxHealth, character):
         x = character.hitbox.centerX
@@ -997,7 +998,7 @@ class TutorialRoom2 (Room):
         self.exits['RIGHT'][2] = TutorialRoom3
         self.itemList.append([200, 100, 'healthItem', 1, None])
         self.itemList.append([200, 300, 'healItem', 2, None])
-        label1 = Label("Collect the Max Health Boost By Pressing " + Keybinds.collect, 200, 80, size=15)
+        label1 = Label("Collect the Max Health Boost By Pressing " + Keybinds.interact, 200, 80, size=15)
         label2 = Label("Collect the Heal Item in the same way", 200, 280, size=15)
         self.drawing = Group(label1, label2)
         
@@ -1052,7 +1053,7 @@ class TutorialRoom6A (Room):
         self.doorList.append([395, 200, 'LOCKED', 1, None, 'v'])
         self.drawing = Group(Label("Collect the Key Item", 200, 120, size=15), 
                              Label("You can use it to unlock 1 gray locked door", 200, 140, size=13),
-                             Label("get close to the door and press "+ Keybinds.collect, 200, 160, size=13))
+                             Label("get close to the door and press "+ Keybinds.interact, 200, 160, size=13))
 
 class TutorialRoom6B (Room): 
     def __init__(self):
