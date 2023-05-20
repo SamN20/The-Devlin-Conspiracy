@@ -7,6 +7,7 @@ Tutorial = Sound('Sound_files\SoundTrack\ALIBI_Music-Catatumbo_Lightning-Master-
 Sand = Sound('Sound_files\SoundTrack\Dune-middle-east-electronic-by-infraction-amp-alexi-action-112364.wav')
 Sand.set_volume(0.3)
 FireLevel = Sound('Sound_files\SoundTrack\Raz Mesinai-Variations Of Incitement-Master--121.00bpm-Gm.wav')
+Credits = Sound('Sound_files\SoundTrack\Dilia-Now-Master--89.00bpm-Eb.wav')
 
 # Music Playing Variables
 Titlescreen.isPlaying = False
@@ -16,7 +17,7 @@ Sand.isPlaying = False
 
 # Sound Effects
 saveGame = Sound('Sound_files\SoundEffects\saveRoomSound.wav')
-saveGame.set_volume(0.5)
+saveGame.set_volume(0.3)
 pauseMenu = Sound('Sound_files\SoundEffects\PauseMenu.wav')
 pauseMenu.set_volume(0.2)
 dash = Sound('Sound_files\SoundEffects\Dash.wav')

@@ -9,7 +9,6 @@ class GameState(object):
     def __init__(self):
         self.mode = 'TITLE SCREEN'
         self.currentRoom = None 
-        self.animations = AnimationManager()
         self.titleScreen = Group()
         self.drawTitleScreen()
         self.drawPauseMenu()
@@ -45,7 +44,10 @@ class GameState(object):
         self.globalDoorList = { # room ID number : [door1, door2, door3, ...]
             'TutorialRoom6' : [True],
             'TutorialRoom6A' : [True], 
-            'FireRoom2' : [True, True]
+            
+            'FireRoom2' : [True, True], 
+
+            'EndingRoom1' : [True, True]
         }
         
         self.cover = Rect(0, 0, 400, 400, opacity = 0)
@@ -193,9 +195,9 @@ class CurrentRoomState(object):
         if player.hitbox.centerY > 405 : 
             self.room.loadingZone('BOTTOM')
 
-###################################
-###### START OF PLAYER CLASS ######
-###################################
+##########################
+###### PLAYER CLASS ######
+##########################
 
 class Player (object): 
     def __init__(self, cx, cy, level): 
@@ -216,13 +218,13 @@ class Player (object):
 
         self.draw(cx, cy, level)
 
-        self.actions = ['dash', 'swing', 'shoot']
+        self.actions = [None]
         self.currentActionIndex = 0
         self.currentAction = self.actions[self.currentActionIndex]
         self.showSelectedAction = False 
         self.currentActionIcon = None
         
-        self.hasDash = True
+        self.hasDash = False
         self.canDash = True
         self.dashDistance = 75 + 25*self.dashMod
         self.dashSpeed = 2.5 + 0.5*self.dashMod
@@ -231,14 +233,14 @@ class Player (object):
         self.dashCooldown = 0
         self.dashRange = Group()
         
-        self.hasSwing = True
+        self.hasSwing = False
         self.canSwing = True 
         self.attacking = False
         self.swingDelay = 120 - 15*self.swingMod
         self.swingCooldown = 0
         self.swing
         
-        self.hasShoot = True
+        self.hasShoot = False
         self.canShoot = True
         self.bullets = [ ]
         self.shootDelay = 90 - 15*self.shootMod
@@ -479,9 +481,9 @@ class Player (object):
                 Sounds.dash.play()
                 self.dashRange = Group(Line(self.hitbox.centerX, self.hitbox.centerY, self.dashToX, self.dashToY, fill = 'blue', opacity = 25))
 
-################################
-###### START OF NPC CLASS ######
-################################
+#######################
+###### NPC CLASS ######
+#######################
                 
 class NPC(object):
     
@@ -659,9 +661,9 @@ class NPC(object):
         if self.sight.hitsShape(player.hitbox):
             self.swingAttack()
 
-##########################
-###### ITEM CLASSES ######
-##########################
+############################
+###### OBJECT CLASSES ######
+############################
 
 class Item (object): 
     def __init__(self, cx, cy, type, index, colour): 
@@ -810,9 +812,9 @@ class Projectile(object):
         if self.drawing.hitsShape(game.currentRoom.thingsWithCollision) == True : 
             self.clear()
 
-##################################
-###### START OF GUI CLASSES ######
-##################################
+#########################
+###### GUI CLASSES ######
+#########################
 
 class HealthBar (object):
     def __init__(self, character): # character is the player/NPC that the health bar is for
@@ -843,10 +845,6 @@ class HealthBar (object):
 ##########################
 ###### ROOM CLASSES ######
 ##########################
-
-class AnimationManager (object): 
-    def __init__(self): 
-        pass 
 
 class Room (object): 
     def __init__(self): 
@@ -968,7 +966,39 @@ class Room (object):
             if player.hitbox.hitsShape(spot):
                 spot.visible = False
 
-class TestRoom (object): 
+class SaveRoom (Room):
+    def __init__(self):
+        super().__init__()
+        self.savingMessage = [
+            ["Saving progress... because real life doesn't", "come with a 'rewind' button. Cherish this privilege!"],
+            ["Save Station: Unmask the secrets, but don't", "let your progress become another layer of deception!"],
+            ["Save Room: A refuge from the tangled web of", "conspiracies. Trust no one, except the save button!"],
+            ["Preserve your truth-seeking journey here.", "The lies may run deep, but your progress stays untainted!"],
+            ["Saving... Shield your progress from the shadowy whispers", "of deception. Unravel the conspiracy with confidence!"],
+            ["Save Point: Leave no stone unturned, no deceit unnoticed.", "Your progress is a beacon of truth amidst the lies!"],
+            ["Save Zone: Where the conspiracies take a break and", "have a cup of tea. Just don't spill it on the evidence!"],
+            ["Welcome to the Save Lair, where frauds and fakes", "take a timeout to practice their poker faces."],
+            ["Saving... because in a world of lies and cheats, we've got", "your back! Your secret's safe with us... probably."],
+            ["Save Zone: Where the truth lies...", "conveniently saved for your convenience!"],
+            ["Saving progress: Because even conspiracies need a", "coffee break. Time to refold those tinfoil hats!"],
+            ["Saving... because even the most elaborate deceptions", "need occasional backup plans. We've got you covered!"],
+            ["Save your progress and remember,", "even heroes need bathroom breaks!"]
+            ]
+        self.draw()
+        player.savePointRoom = self.__class__
+        if game.mode == 'PLAYING':
+            Sounds.saveGame.play()
+
+    def draw(self):
+        floor = Image('Images/Save-Room.png', 10, 5, width = 380, height = 380, opacity = 10)
+        text = self.savingMessage[randrange(0, len(self.savingMessage))]
+        text1 = text[0]
+        text2 = text[1]
+        self.savePointText = Group(Label(text1, 200, 190, size = 15, fill = 'slateGray', borderWidth = 0.5), Label(text2, 200, 210, size = 15, fill = 'slateGray'))
+        self.savePointText.centerX, self.savePointText.centerY = 200, 200
+        self.drawing = Group(floor, self.savePointText)
+
+class TestRoom (object): # unused 
     def __init__(self):
         self.attributes = { 
             'lightLevel' : 10,
@@ -983,6 +1013,10 @@ class TestRoom (object):
     def load(self): 
         for i in self.attributes : 
             game.currentRoom.attributes[i] = self.attributes[i]
+
+####################
+##### TUTORIAL #####
+####################
 
 class TutorialRoom1 (Room): 
     def __init__(self): 
@@ -1081,7 +1115,7 @@ class TutorialRoom8 (Room):
         super().__init__() 
         game.currentRoom.roomID = 'TutorialRoom8'
         self.exits['RIGHT'][2] = TutorialRoom7
-        self.exits['TOP'][2] = EndOfTutorialSaveRoom
+        self.exits['TOP'][2] = LobbySaveRoom
         self.drawing = Group(Label("End of Tutorial", 200, 70, size=16, bold=True),
                             Label("Congratulations!", 200, 100, size=14, bold=True),
                             Label("You have completed the tutorial of", 200, 150, size=12),
@@ -1095,47 +1129,17 @@ class TutorialRoom8 (Room):
         if Sounds.Tutorial.isPlaying == False: 
             Sounds.Tutorial.play()
             Sounds.Tutorial.isPlaying = True
-
-class SaveRoom (Room):
-    def __init__(self):
-        super().__init__()
-        self.savingMessage = [
-            ["Saving progress... because real life doesn't", "come with a 'rewind' button. Cherish this privilege!"],
-            ["Save Station: Unmask the secrets, but don't", "let your progress become another layer of deception!"],
-            ["Save Room: A refuge from the tangled web of", "conspiracies. Trust no one, except the save button!"],
-            ["Preserve your truth-seeking journey here.", "The lies may run deep, but your progress stays untainted!"],
-            ["Saving... Shield your progress from the shadowy whispers", "of deception. Unravel the conspiracy with confidence!"],
-            ["Save Point: Leave no stone unturned, no deceit unnoticed.", "Your progress is a beacon of truth amidst the lies!"],
-            ["Save Zone: Where the conspiracies take a break and", "have a cup of tea. Just don't spill it on the evidence!"],
-            ["Welcome to the Save Lair, where frauds and fakes", "take a timeout to practice their poker faces."],
-            ["Saving... because in a world of lies and cheats, we've got", "your back! Your secret's safe with us... probably."],
-            ["Save Zone: Where the truth lies...", "conveniently saved for your convenience!"],
-            ["Saving progress: Because even conspiracies need a", "coffee break. Time to refold those tinfoil hats!"],
-            ["Saving... because even the most elaborate deceptions", "need occasional backup plans. We've got you covered!"],
-            ["Save your progress and remember,", "even heroes need bathroom breaks!"]
-            ]
-        self.draw()
-        player.savePointRoom = self.__class__
-        if game.mode == 'PLAYING':
-            Sounds.saveGame.play()
-
-    def draw(self):
-        floor = Image('Images/Save-Room.png', 10, 5, width = 380, height = 380, opacity = 10)
-        text = self.savingMessage[randrange(0, len(self.savingMessage))]
-        text1 = text[0]
-        text2 = text[1]
-        self.savePointText = Group(Label(text1, 200, 190, size = 15, fill = 'slateGray', borderWidth = 0.5), Label(text2, 200, 210, size = 15, fill = 'slateGray'))
-        self.savePointText.centerX, self.savePointText.centerY = 200, 200
-        self.drawing = Group(floor, self.savePointText)
         
-class EndOfTutorialSaveRoom (SaveRoom):
+class LobbySaveRoom (SaveRoom):
     def __init__(self):
         super().__init__()
-        game.currentRoom.roomID = 'EOfTSR'
+        game.currentRoom.roomID = 'LobbySaveRoom'
         self.exits['BOTTOM'][2] = TutorialRoom8
         self.exits['LEFT'][2] = SandTempleRoom1
-        if 'EOfTSR' not in game.globalDoorList:
-            game.globalDoorList['EOfTSR'] = [True, True]
+        self.exits['TOP'][2] = EndingRoom1
+        
+        if 'LobbySaveRoom' not in game.globalDoorList:
+            game.globalDoorList['LobbySaveRoom'] = [True, True]
         self.doorList.append([0, 200, 'NORMAL', 1, None, 'v'])
         # self.doorList.append([395, 200, 'NORMAL', 2, None, 'V'])
         self.exits['RIGHT'][2] = FireRoom1
@@ -1148,11 +1152,15 @@ class EndOfTutorialSaveRoom (SaveRoom):
         Sounds.FireLevel.fadeout(3000)
         Sounds.FireLevel.isPlaying = False
 
+######################
+##### FIRE WORLD #####
+######################
+
 class FireRoom1 (Room): 
     def __init__(self):
         super().__init__()
         game.currentRoom.roomID = 'FireRoom1'
-        self.exits['LEFT'][2] = EndOfTutorialSaveRoom
+        self.exits['LEFT'][2] = LobbySaveRoom
         self.exits['TOP'][2] = FireRoom1A
         self.exits['BOTTOM'][2] = FireRoom2
         
@@ -1323,31 +1331,22 @@ class FireRoom8R (Room):
 
         self.npcList.append([100, 200, 90, 3, 0, 'red', 1])
 
-class EndingRoom1 (Room): 
-    def __init__(self):
-        super().__init__()
-        game.currentRoom.roomID = 'EndingRoom1'
-        self.exits['BOTTOM'][2] = EndOfTutorialSaveRoom
-        self.exits['TUTORIAL START'][2] = EndingRoom2
+#############################
+##### Sand Temple World #####
+#############################
 
-class EndingRoom2 (Room): 
-    def __init__(self):
-        super().__init__()
-        game.currentRoom.roomID = 'EndingRoom2'
-
-## Sand Temple World ##
 class SandTempleRoom1 (Room):
     def __init__(self):
         super().__init__()
         game.currentRoom.roomID = 'Sand1'
-        self.exits['RIGHT'][2] = EndOfTutorialSaveRoom
+        self.exits['RIGHT'][2] = LobbySaveRoom
         self.exits['LEFT'][2] = SandTempleRoom2
         if 'Sand1' not in game.globalDoorList:
             game.globalDoorList['Sand1'] = [True]
         if 'Sand1' not in game.globalNPCList:
             game.globalNPCList['Sand1'] = [True]
         if player.drawing.centerX < 300:
-            Sounds.Sand.play()
+            Sounds.Sand.play(loop = True)
         self.draw()
 
     def draw(self):
@@ -1515,7 +1514,6 @@ class SandTempleRoom2C (Room):
 
         self.drawing = Group(sandFloor)
 
-
 class SandTempleRoom2Ca (Room):
     def __init__(self):
         super().__init__()
@@ -1607,7 +1605,46 @@ class SandTempleRoom4 (Room):
         sandFloor = Image('Images/Sand.png', 0, 0, opacity = 40)
         self.doorList.append([200, 395, 'LOCKED', 1, None, 'h'])
         self.drawing = Group(sandFloor)
-    
+
+########################
+##### ENDING ROOMS #####
+########################
+
+class EndingRoom1 (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'EndingRoom1'
+        self.exits['BOTTOM'][2] = LobbySaveRoom
+        self.exits['TOP'][2] = EndingRoom2
+
+        self.doorList.append([200, 150, 'SPECIAL', 1, 'darkRed', 'h'])
+        self.doorList.append([200, 250, 'SPECIAL', 2, 'tan', 'h'])
+
+        self.wallList.append([115, 10, 380, 'v'])
+        self.wallList.append([275, 10, 380, 'v'])
+
+class EndingRoom2 (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'EndingRoom2'
+        self.exits['BOTTOM'][2] = EndingRoom1
+        
+        Sounds.Credits.set_volume(0.3)
+        Sounds.Credits.play(loop = True)
+
+        self.drawing = Group(
+            Label('CONGRATULATIONS ON COMPLETING OUR GAME!', 200, 25, size = 15, bold = True), 
+            Label('Game Made By : Sam Nolan and Jonah Shantz', 200, 75, size = 15, bold = True), 
+            Label('Soundtrack Credits', 200, 125, bold = True), 
+            Label('Title Theme : Burning Sun - David Baron', 200, 150, bold = True), 
+            Label('Tutorial Theme : Catatumbo Lighting - ALIBI Music', 200, 175, bold = True), 
+            Label('Sand Temple Theme : Dune - Alexi Action', 200, 200, bold = True), 
+            Label('Fire Level Theme : Variations Of Incitement - Raz Mesinai', 200, 225, bold = True), 
+            Label('Credits Theme : Now - Dilia', 200, 250, bold = True), 
+            Label('For More Levels, Place $25 In An Unmarked Package', 200, 300, bold = True), 
+            Label('And Leave It At 51.5882° N, 0.3423° W', 200, 325, bold = True)
+                             )
+
 ###########################
 ###### CMU FUNCTIONS ######
 ###########################
@@ -1623,7 +1660,7 @@ def onKeyPress(key):
     elif game.mode == 'PAUSED' and key == Keybinds.pause: 
         game.unpause()
     
-### debug ###
+### debug ### CHMATIL DO NOT USE OR ABUSE UNTIL GAME COMPLETED, WE WILL KNOW - Signed Jonah and Sam
     if game.mode != 'TITLE SCREEN': 
         if key == 'left': 
             game.currentRoom.room.loadingZone('LEFT')
@@ -1633,10 +1670,8 @@ def onKeyPress(key):
             game.currentRoom.room.loadingZone('TOP')
         if key == 'down':
             game.currentRoom.room.loadingZone('BOTTOM')
-        if key == 'p': 
-            print(player.obtainedKeys, player.obtainedSpecialKeys)
-        if key == 'j': 
-            game.currentRoom.loadNewRoom(EndOfTutorialSaveRoom, 'TOP')
+        if key == 'j' : 
+            game.currentRoom.loadNewRoom(EndingRoom2, 'TOP')
 
 def onMouseMove(x, y): 
     game.handleMouseMove(x, y)
