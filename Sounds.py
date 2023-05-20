@@ -6,9 +6,15 @@ breakStealth = Sound('Sound_files\SoundTrack\TheDGTL-Hustle Like Dat-Master--88.
 Tutorial = Sound('Sound_files\SoundTrack\ALIBI_Music-Catatumbo_Lightning-Master--130.00bpm-F.wav')
 FireLevel = Sound('Sound_files\SoundTrack\Raz Mesinai-Variations Of Incitement-Master--121.00bpm-Gm.wav')
 
+# Music Playing Variables
+Titlescreen.isPlaying = False
+Tutorial.isPlaying = False
+FireLevel.isPlaying = False
+
 # Sound Effects
 saveGame = Sound('Sound_files\SoundEffects\saveRoomSound.wav')
 pauseMenu = Sound('Sound_files\SoundEffects\PauseMenu.wav')
 pauseMenu.set_volume(0.2)
 dash = Sound('Sound_files\SoundEffects\Dash.wav')
 # Dash.set_volume(0.2)
+

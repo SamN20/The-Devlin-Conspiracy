@@ -3,7 +3,7 @@ import Keybinds
 import Sounds
 
 app.stepsPerSecond = 60
-app.background = 'gainsboro'
+app.background = 'silver'
 
 class GameState(object): 
     def __init__(self):
@@ -27,7 +27,7 @@ class GameState(object):
             'TutorialRoom6B' : [True], 
 
             'FireRoom1A' : [True], 
-            'FireRoom2C' : [True], 
+            'FireRoom2C' : [True, True], 
             'FireRoom8' : [True], 
         }
 
@@ -39,6 +39,7 @@ class GameState(object):
             'FireRoom2B' : [True], 
             'FireRoom4' : [True], 
             'FireRoom6' : [True, True], 
+            'FireRoom8R' : [True, True], 
         }
         self.globalDoorList = { 
             'TutorialRoom6' : [True],
@@ -56,7 +57,7 @@ class GameState(object):
         self.cursorX = 200
         self.cursorY = 200
 
-        Sounds.Titlescreen.set_volume(0.2)
+        Sounds.Titlescreen.set_volume(0.3)
         Sounds.Titlescreen.play(loop = True)
 
     def drawTitleScreen(self):
@@ -78,7 +79,10 @@ class GameState(object):
         player.drawing.visible = True 
         game.currentRoom.loadNewRoom(TutorialRoom1, 'TUTORIAL SPAWN')
         Sounds.Tutorial.set_volume(0.4)
-        Sounds.Tutorial.play(loop = True)
+        
+        if Sounds.Tutorial.isPlaying == False: 
+            Sounds.Tutorial.play(loop = True)
+            Sounds.Tutorial.isPlaying = True
 
     def beginStartingAnimation(self): 
         Sounds.Titlescreen.fadeout(3000)
@@ -902,8 +906,8 @@ class Room (object):
             if game.globalItemList[game.currentRoom.roomID][item[3]-1] : 
                 self.allItems.append(Item(item[0], item[1], item[2], item[3], item[4]))
         
-        for i in range(len(game.currentRoom.allItems)): 
-            game.currentRoom.allItems[0].clear()
+        for item in game.currentRoom.allItems: 
+            item.clear()
         
         game.currentRoom.allItems = self.allItems
 
@@ -1036,6 +1040,11 @@ class TutorialRoom8 (Room):
         self.exits['RIGHT'][2] = TutorialRoom7
         self.exits['TOP'][2] = EndOfTutorialSaveRoom
 
+        Sounds.Tutorial.set_volume(0.2)
+        if Sounds.Tutorial.isPlaying == False: 
+            Sounds.Tutorial.play()
+            Sounds.Tutorial.isPlaying = True
+
 class SaveRoom (Room):
     def __init__(self):
         super().__init__()
@@ -1077,7 +1086,9 @@ class EndOfTutorialSaveRoom (SaveRoom):
         game.cover.opacity = 0
 
         Sounds.Tutorial.fadeout(3000)
+        Sounds.Tutorial.isPlaying = False
         Sounds.FireLevel.fadeout(3000)
+        Sounds.FireLevel.isPlaying = False
 
 class FireRoom1 (Room): 
     def __init__(self):
@@ -1092,7 +1103,9 @@ class FireRoom1 (Room):
         self.lavaTileList.append([275, 10, 115, 380, 'red'])
         
         Sounds.FireLevel.set_volume(0.2)
-        Sounds.FireLevel.play()
+        if Sounds.FireLevel.isPlaying == False: 
+            Sounds.FireLevel.play()
+            Sounds.FireLevel.isPlaying = True
 
 class FireRoom1A (Room): 
     def __init__(self):
@@ -1114,8 +1127,12 @@ class FireRoom2 (Room):
         self.exits['BOTTOM'][2] = FireRoom2A
         self.exits['RIGHT'][2] = FireRoom3
         
+        self.lavaTileList.append([10, 10, 115, 380, 'red'])
+        self.lavaTileList.append([275, 275, 115, 115, 'red'])
+        self.lavaTileList.append([275, 10, 115, 115, 'red'])
+
         self.doorList.append([200, 395, 'LOCKED', 1, None, 'h'])
-        self.doorList.append([395, 200, 'SPECIAL', 2, 'orange', 'v'])
+        self.doorList.append([395, 200, 'SPECIAL', 2, 'darkOrange', 'v'])
 
 class FireRoom2A (Room): 
     def __init__(self):
@@ -1139,25 +1156,126 @@ class FireRoom2B (Room):
         game.currentRoom.roomID = 'FireRoom2B'
         self.exits['TOP'][2] = FireRoom2A
         self.exits['RIGHT'][2] = FireRoom2C
+        
         self.lavaTileList.append([10, 10, 115, 380, 'red'])
         self.lavaTileList.append([125, 275, 265, 115, 'red'])
 
-        self.npcList.append([257.5, 142.5, 0, 1, 'red', 1])
-
+        self.npcList.append([257.5, 142.5, 180, 1, 0, 'red', 1])
 
 class FireRoom2C (Room): 
     def __init__(self):
         super().__init__()
-        self.exits['LEFT'][2] = FireRoom2B 
+        game.currentRoom.roomID = 'FireRoom2C'
+        self.exits['LEFT'][2] = FireRoom2CSaveRoom
 
-        self.itemList.append([200, 150, 'specialKeyItem', 1, 'orange'])
-        self.itemList.append([200, 300, 'shootItem', 2, None])
+        self.itemList.append([200, 175, 'specialKeyItem', 1, 'darkOrange'])
+        self.itemList.append([200, 225, 'shootItem', 2, None])
+
+        self.lavaTileList.append([10, 10, 380, 115, 'red'])
+        self.lavaTileList.append([10, 275, 380, 115, 'red'])
+        self.lavaTileList.append([275, 125, 115, 150, 'red'])
+
+class FireRoom2CSaveRoom (SaveRoom): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'FireRoom2CSaveRoom'
+        self.exits['TOP'][2] = FireRoom2A
+        self.exits['RIGHT'][2] = FireRoom2C
         
 class FireRoom3 (Room): 
     def __init__(self):
         super().__init__()
         game.currentRoom.roomID = 'FireRoom3'
         self.exits['LEFT'][2] = FireRoom2
+        self.exits['RIGHT'][2] = FireRoom4
+
+        self.lavaTileList.append([10, 10, 380, 115, 'red'])
+        self.lavaTileList.append([10, 275, 380, 115, 'red'])
+
+        self.lavaTileList.append([100, 125, 75, 100, 'red'])
+        self.lavaTileList.append([200, 175, 75, 100, 'red'])
+
+class FireRoom4 (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'FireRoom4'
+        self.exits['LEFT'][2] = FireRoom3
+        self.exits['RIGHT'][2] = FireRoom5
+
+        self.lavaTileList.append([10, 10, 380, 115, 'red'])
+        self.lavaTileList.append([10, 275, 380, 115, 'red'])
+
+        self.npcList.append([300, 200, 270, 2, 0, 'red', 1])
+
+class FireRoom5 (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'FireRoom5'
+        self.exits['LEFT'][2] = FireRoom4
+        self.exits['TOP'][2] = FireRoom6
+
+        self.lavaTileList.append([275, 10, 115, 380, 'red'])
+        self.lavaTileList.append([10, 275, 265, 115, 'red'])
+        self.lavaTileList.append([10, 10, 115, 115, 'red'])
+
+class FireRoom6 (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'FireRoom6'
+        self.exits['BOTTOM'][2] = FireRoom5
+        self.exits['RIGHT'][2] = FireRoom7
+        
+        self.lavaTileList.append([10, 10, 115, 380, 'red'])
+        self.lavaTileList.append([125, 10, 265, 115, 'red'])
+        self.lavaTileList.append([275, 275, 115, 115, 'red'])
+
+        self.npcList.append([150, 150, 180, 2, 0, 'red', 1])
+
+class FireRoom7 (Room):
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'FireRoom7'
+        self.exits['LEFT'][2] = FireRoom6
+        self.exits['RIGHT'][2] = FireRoom8
+
+        self.lavaTileList.append([10, 10, 380, 115, 'red'])
+        self.lavaTileList.append([10, 275, 380, 115, 'red'])
+
+class FireRoom8 (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'FireRoom8'
+        self.exits['LEFT'][2] = FireRoom8R
+
+        self.itemList.append([200, 200, 'specialKeyItem', 1, 'darkRed'])
+
+        self.lavaTileList.append([10, 10, 380, 115, 'red'])
+        self.lavaTileList.append([10, 275, 380, 115, 'red'])
+        self.lavaTileList.append([275, 125, 115, 150, 'red'])
+
+class FireRoom8R (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'FireRoom8R'
+        self.exits['LEFT'][2] = FireRoom6
+        self.exits['RIGHT'][2] = FireRoom8
+
+        self.lavaTileList.append([10, 10, 380, 115, 'red'])
+        self.lavaTileList.append([10, 275, 380, 115, 'red'])
+
+        self.npcList.append([100, 200, 90, 3, 0, 'red', 1])
+
+class EndingRoom1 (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'EndingRoom1'
+        self.exits['BOTTOM'][2] = EndOfTutorialSaveRoom
+        self.exits['TUTORIAL START'][2] = EndingRoom2
+
+class EndingRoom2 (Room): 
+    def __init__(self):
+        super().__init__()
+        game.currentRoom.roomID = 'EndingRoom2'
 
 ###########################
 ###### CMU FUNCTIONS ######
@@ -1187,7 +1305,7 @@ def onKeyPress(key):
         if key == 'p': 
             print(player.obtainedKeys, player.obtainedSpecialKeys)
         if key == 'j': 
-            game.currentRoom.loadNewRoom(FireRoom2B, 'BOTTOM')
+            game.currentRoom.loadNewRoom(EndOfTutorialSaveRoom, 'TOP')
 
 def onMouseMove(x, y): 
     game.handleMouseMove(x, y)
