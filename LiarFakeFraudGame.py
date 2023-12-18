@@ -11,7 +11,7 @@ class GameState(object):
         self.currentRoom = None 
         self.titleScreen = Group()
         self.drawTitleScreen()
-        self.drawPauseMenu()
+        self.drawPauseMenu() 
 
         self.worldList = ['tutorial']
         self.worldListIndex = 0 
@@ -776,19 +776,28 @@ class Door (Obstacle) :
 class Lava (Obstacle): 
     def __init__(self, cx, cy, length, width, colour):
         super().__init__(None, colour)
-        self.colour = colour
         self.draw(cx, cy, length, width, colour)
     def draw(self, cx, cy, length, width, colour): 
         self.drawing = Group(Rect(cx, cy, length, width, fill = colour))
 
     def killPlaneLogic(self): 
-        if self.drawing.contains(player.hitbox.centerX, player.hitbox.centerY) == True: 
+        if self.drawing.contains(player.hitbox.centerX, player.hitbox.centerY): 
             player.health = 0
 
     def clear(self): 
         self.drawing.clear()
 
-class Projectile(object):
+class Ice (Obstacle): 
+    def __init__(self, cx, cy, length, width): 
+        super().__init__(None, 'lightBlue')
+        self.draw(cx, cy, length, width)
+    def draw(self, cx, cy, length, width): 
+        self.drawing = Group(Rect(cx, cy, length, width, fill = 'lightBlue'))
+    def slipperyLogic(self): 
+        if self.drawing.contains(player.hitbox.centerX, player.hitbox.centerY): 
+            print('poop')
+
+class Projectile (object):
     def __init__(self, cx, cy, angle, colour):
         self.drawing = Group(Circle(cx, cy, 3, fill = colour))
         self.moveX, self.moveY = getPointInDir(cx, cy, angle, 100)
@@ -869,6 +878,7 @@ class Room (object):
         self.allItems = [ ]
         self.allDoors = [ ]
         self.allLavaTiles = [ ]
+        self.allIceTiles = [ ]
 
         self.drawing = Group()
         self.darkSpots = Group()
@@ -998,21 +1008,10 @@ class SaveRoom (Room):
         self.savePointText.centerX, self.savePointText.centerY = 200, 200
         self.drawing = Group(floor, self.savePointText)
 
-class TestRoom (object): # unused 
+class TestRoom (Room): # unused 
     def __init__(self):
-        self.attributes = { 
-            'lightLevel' : 10,
-            'slippery' : False, 
-            'hasBoss' : False, 
-            'hasEnemies' : True, 
-            'hasCollectibles' : True, 
-            'checkpoint' : False, 
-            'savepoint' : False, 
-        } 
-        self.roomID = 'testRoom'
-    def load(self): 
-        for i in self.attributes : 
-            game.currentRoom.attributes[i] = self.attributes[i]
+        super().__init__()
+        self.roomID = 'TestRoom'
 
 ####################
 ##### TUTORIAL #####
@@ -1658,7 +1657,7 @@ def onKeyPress(key):
         if key == Keybinds.pause: 
             game.pause()
     elif game.mode == 'PAUSED' and key == Keybinds.pause: 
-        game.unpause()
+        game.unpause() 
     
 ### debug ### CHMATIL DO NOT USE OR ABUSE UNTIL GAME COMPLETED, WE WILL KNOW - Signed Jonah and Sam
     if game.mode != 'TITLE SCREEN': 
@@ -1671,7 +1670,7 @@ def onKeyPress(key):
         if key == 'down':
             game.currentRoom.room.loadingZone('BOTTOM')
         if key == 'j' : 
-            game.currentRoom.loadNewRoom(EndingRoom2, 'TOP')
+            game.currentRoom.loadNewRoom(TestRoom, 'TOP')
 
 def onMouseMove(x, y): 
     game.handleMouseMove(x, y)
@@ -1698,7 +1697,7 @@ def mapValue(value, valueMin, valueMax, targetMin, targetMax):
     result = ratio * (targetMax-targetMin) + targetMin
     return result
 
-def orientation(x1, y1, x2, y2, type): # Not realy used... sorry Jonah
+def orientation(x1, y1, x2, y2, type): # Not really used... sorry Jonah
     angle = rounded(angleTo(x1, y1, x2, y2))
     if type == 'diagonal' : 
         if angle >= 0 and angle < 90: 
